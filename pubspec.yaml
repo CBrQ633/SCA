@@ -1,0 +1,72 @@
+name: smart_call_assistant
+description: Smart Call Assistant - Sales Call Organization Tool
+publish_to: "none"
+version: 1.0.1+2
+
+environment:
+  sdk: ">=3.0.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+
+  # State Management
+  provider: ^6.1.1
+
+  # Navigation
+  go_router: ^14.0.0
+
+  # Supabase Backend
+  supabase_flutter: ^2.5.0
+
+  # File Handling
+  file_picker: ^8.0.0
+  image_picker: ^1.0.7
+  excel: ^4.0.2
+  path_provider: ^2.1.2
+
+  # OCR
+  google_mlkit_text_recognition: ^0.13.0
+
+  # Phone Integration
+  url_launcher: ^6.2.4
+
+  # Local Storage
+  shared_preferences: ^2.2.2
+
+  # Internationalization
+  intl: any
+
+  # UI Components
+  flutter_svg: ^2.0.10
+  cached_network_image: ^3.3.1
+  animate_do: ^3.3.4
+  fl_chart: ^0.66.0
+  glassmorphism: ^3.0.0
+  flutter_speed_dial: ^7.0.0
+
+  # Utilities
+  uuid: ^4.3.3
+  http: ^1.2.0
+  package_info_plus: ^9.0.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.1
+  flutter_launcher_icons: ^0.13.1
+
+flutter:
+  uses-material-design: true
+  generate: true
+
+  assets:
+    - assets/images/
+    - assets/icons/
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/icons/app_icon.png"
