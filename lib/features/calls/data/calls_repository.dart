@@ -107,12 +107,12 @@ class CallsRepository {
       final excelFile = excel_lib.Excel.decodeBytes(bytes);
 
       final List<Map<String, String>> entries = [];
-      final RegExp phoneRegex =
-          RegExp(r'[0-9]{8,15}'); // Basic length check for cleaned numbers
+      // Regex allows digits and optional leading plus
+      final RegExp phoneRegex = RegExp(r'^\+?[0-9]{8,15}$');
 
       for (var table in excelFile.tables.keys) {
-        final sheet = excelFile.tables[table]!;
-        if (sheet.maxRows == 0) continue;
+        final sheet = excelFile.tables[table];
+        if (sheet == null || sheet.maxRows == 0) continue;
 
         for (var row in sheet.rows) {
           if (row.isEmpty) continue;
@@ -124,44 +124,64 @@ class CallsRepository {
 
           // Pass 1: Find the phone number in this row
           for (var cell in row) {
-            if (cell == null) continue;
+            if (cell == null || cell.value == null) continue;
 
-            final val = cell.value.toString().trim();
+            // Smart String Conversion: valid for both Text and Number cells
+            String val = cell.value.toString().trim();
+
+            // Fix: Excel might read 0101234 as 101234.0
+            if (val.endsWith('.0')) {
+              val = val.substring(0, val.length - 2);
+            }
+
             if (val.isEmpty) continue;
 
-            // Clean input to just digits
-            final cleanVal = val.replaceAll(RegExp(r'[^\d]'), '');
+            // Clean input: keep digits and '+' only
+            // e.g., "+20-10-..." -> "+2010..."
+            final cleanVal = val.replaceAll(RegExp(r'[^\d+]'), '');
 
-            // Check for Egyptian prefixes
-            // Local: 010, 011, 012, 015 (11 digits)
-            // International: 2010, 2011, 2012, 2015 (12 digits)
+            // --- SMART PARSING LOGIC ---
+            String processedPhone = cleanVal;
+
+            // Scenario 1: Egyptian number missing leading zero (Excel removed it)
+            // e.g. "10xxxxxxxxx" (10 digits) -> needs to be "010xxxxxxxxx"
+            if (processedPhone.length == 10) {
+              if (processedPhone.startsWith('10') ||
+                  processedPhone.startsWith('11') ||
+                  processedPhone.startsWith('12') ||
+                  processedPhone.startsWith('15')) {
+                processedPhone = '0$processedPhone';
+              }
+            }
+
+            // Scenario 2: Already correct Egyptian number
+            // e.g. "010xxxxxxxxx" (11 digits)
             bool isEgyptian = false;
-            if (cleanVal.length == 11 &&
-                (cleanVal.startsWith('010') ||
-                    cleanVal.startsWith('011') ||
-                    cleanVal.startsWith('012') ||
-                    cleanVal.startsWith('015'))) {
+            if (processedPhone.length == 11 &&
+                (processedPhone.startsWith('010') ||
+                    processedPhone.startsWith('011') ||
+                    processedPhone.startsWith('012') ||
+                    processedPhone.startsWith('015'))) {
               isEgyptian = true;
-            } else if (cleanVal.length == 12 &&
-                (cleanVal.startsWith('2010') ||
-                    cleanVal.startsWith('2011') ||
-                    cleanVal.startsWith('2012') ||
-                    cleanVal.startsWith('2015'))) {
+            } else if (processedPhone.length >= 12 &&
+                (processedPhone.startsWith('201') ||
+                    processedPhone.startsWith('+201'))) {
+              // International Egyptian format
               isEgyptian = true;
             }
 
+            // Decision Logic
             if (isEgyptian) {
-              foundPhone = cleanVal;
+              foundPhone = processedPhone;
               foundStrictPhone = true;
             } else if (!foundStrictPhone &&
                 foundPhone.isEmpty &&
-                phoneRegex.hasMatch(cleanVal)) {
-              // Only pick a "weak" generic number if we haven't found a strict one yet
-              foundPhone = cleanVal;
+                phoneRegex.hasMatch(processedPhone)) {
+              // Generic number (International or other)
+              foundPhone = processedPhone;
             } else {
-              // If it's not the phone number, check if it's a name
-              // We pick the longest text string in the row as the likely name.
-              // Avoid picking numbers as names
+              // If not a phone, check if it's a name (longest text)
+              // Only consider it a name if it DOESN'T look like a phone number
               if (!phoneRegex.hasMatch(cleanVal) &&
                   val.length > longestTextLen) {
                 longestTextLen = val.length;
@@ -172,7 +192,7 @@ class CallsRepository {
 
           // If we found a valid phone number in this row, add it
           if (foundPhone.isNotEmpty) {
-            // Basic validation: must be at least 10 digits
+            // Basic validation: must be at least 10 digits (01xxxxxxxxx)
             if (foundPhone.length >= 10) {
               entries.add({
                 'phone': foundPhone,
