@@ -1,5 +1,5 @@
 import 'dart:io';
-import 'package:excel/excel.dart';
+
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -54,56 +54,16 @@ class _CallListDetailsScreenState extends State<CallListDetailsScreen> {
     try {
       FilePickerResult? result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
-        allowedExtensions: ['xlsx', 'xls'],
+        allowedExtensions: ['xlsx', 'xls', 'ods'],
       );
 
       if (result != null) {
         setState(() => _isLoading = true);
 
         final file = File(result.files.single.path!);
-        final bytes = file.readAsBytesSync();
-        final excel = Excel.decodeBytes(bytes);
 
-        List<Map<String, String>> importedItems = [];
-
-        // Regex for Egyptian phone numbers:
-        // +20 followed by 10 digits, OR 01[0125] followed by 8 digits
-        final egyptPhoneRegex = RegExp(r'(\+20\d{10}|0?1[0125]\d{8})');
-
-        for (var table in excel.tables.keys) {
-          for (var row in excel.tables[table]!.rows) {
-            if (row.isEmpty) continue;
-
-            // Scan ALL cells in the row for phone numbers
-            for (var cell in row) {
-              if (cell == null) continue;
-              final cellValue = cell.value?.toString().trim() ?? '';
-              if (cellValue.isEmpty) continue;
-
-              // Clean the cell value (remove spaces, dashes, etc.)
-              final cleanedValue =
-                  cellValue.replaceAll(RegExp(r'[\s\-\(\)]'), '');
-
-              // Find all Egyptian phone numbers in this cell
-              final matches = egyptPhoneRegex.allMatches(cleanedValue);
-              for (var match in matches) {
-                String phone = match.group(0)!;
-
-                // Normalize: ensure +20 prefix
-                if (phone.startsWith('01')) {
-                  phone = '+20$phone';
-                } else if (phone.startsWith('1') && phone.length == 10) {
-                  phone = '+20$phone';
-                }
-
-                // Avoid duplicates
-                if (!importedItems.any((item) => item['phone'] == phone)) {
-                  importedItems.add({'name': 'Imported', 'phone': phone});
-                }
-              }
-            }
-          }
-        }
+        // Use repository to import (it now uses spreadsheet_decoder which is safer)
+        final importedItems = await _repository.importFromExcel(file);
 
         if (importedItems.isNotEmpty) {
           await _repository.addItemsToList(widget.listId, importedItems);

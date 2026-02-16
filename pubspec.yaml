@@ -1,7 +1,7 @@
 name: smart_call_assistant
 description: Smart Call Assistant - Sales Call Organization Tool
 publish_to: "none"
-version: 1.0.1+2
+version: 1.0.2+3
 
 environment:
   sdk: ">=3.0.0 <4.0.0"
@@ -24,7 +24,7 @@ dependencies:
   # File Handling
   file_picker: ^8.0.0
   image_picker: ^1.0.7
-  excel: ^4.0.2
+  spreadsheet_decoder: any
   path_provider: ^2.1.2
 
   # OCR

@@ -1,7 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/config/supabase_config.dart';
 import '../../../shared/services/models.dart';
-import 'package:excel/excel.dart' as excel_lib;
+import 'package:spreadsheet_decoder/spreadsheet_decoder.dart';
 import 'dart:io';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'models/call_list_model.dart';
@@ -100,18 +100,74 @@ class CallsRepository {
     }
   }
 
-  // Import from Excel/CSV - Scans ENTIRE sheet for numbers
+  // Helper: Normalize phone numbers (e.g. add leading zero to Egyptian numbers)
+  String _normalizePhoneNumber(String raw) {
+    if (raw.trim().isEmpty) return '';
+
+    // 1. Clean input: keep digits and '+' only
+    // Handle scientific notation from Excel (e.g., 1.01E9) if it slipped through as string
+    if (raw.toUpperCase().contains('E')) {
+      try {
+        final doubleVal = double.parse(raw);
+        raw = doubleVal.toStringAsFixed(0);
+      } catch (_) {}
+    }
+
+    // Remove decimals like .0
+    if (raw.endsWith('.0')) {
+      raw = raw.substring(0, raw.length - 2);
+    }
+
+    String clean = raw.replaceAll(RegExp(r'[^\d+]'), '');
+
+    // 2. Handle International Egyptian format (+20 or 20 starting with 1)
+    if (clean.startsWith('+20')) {
+      clean = clean.substring(3); // Remove +20 -> 10xxxxxxxxx
+      return '0$clean'; // Add 0 -> 010xxxxxxxxx
+    } else if (clean.startsWith('20') && clean.length > 10) {
+      // Catch 2010... but avoid 20... (short numbers)
+      if (clean.startsWith('201')) {
+        clean = clean.substring(2); // Remove 20 -> 10xxxxxxxxx
+        return '0$clean'; // Add 0 -> 010xxxxxxxxx
+      }
+    }
+
+    // 3. Handle Egyptian Numbers missing leading zero (common in Excel/OCR)
+    // Case: "10xxxxxxxxx" (10 digits) -> "010xxxxxxxxx"
+    if (clean.length == 10) {
+      if (clean.startsWith('10') ||
+          clean.startsWith('11') ||
+          clean.startsWith('12') ||
+          clean.startsWith('15')) {
+        return '0$clean';
+      }
+    }
+
+    // 4. Case: "010xxxxxxxxx" (11 digits) - already correct, just ensure it's clean
+    if (clean.length == 11 &&
+        (clean.startsWith('010') ||
+            clean.startsWith('011') ||
+            clean.startsWith('012') ||
+            clean.startsWith('015'))) {
+      return clean;
+    }
+
+    return clean;
+  }
+
+  // Import from Excel/CSV - Scans ENTIRE sheet for numbers using spreadsheet_decoder
   Future<List<Map<String, String>>> importFromExcel(File file) async {
     try {
       final bytes = file.readAsBytesSync();
-      final excelFile = excel_lib.Excel.decodeBytes(bytes);
+      // Use SpreadsheetDecoder which is more robust than 'excel' package
+      final decoder = SpreadsheetDecoder.decodeBytes(bytes, update: true);
 
       final List<Map<String, String>> entries = [];
       // Regex allows digits and optional leading plus
       final RegExp phoneRegex = RegExp(r'^\+?[0-9]{8,15}$');
 
-      for (var table in excelFile.tables.keys) {
-        final sheet = excelFile.tables[table];
+      for (var table in decoder.tables.keys) {
+        final sheet = decoder.tables[table];
         if (sheet == null || sheet.maxRows == 0) continue;
 
         for (var row in sheet.rows) {
@@ -122,68 +178,55 @@ class CallsRepository {
           int longestTextLen = 0;
           bool foundStrictPhone = false;
 
-          // Pass 1: Find the phone number in this row
+          // Pass 1: Scan all cells in the row
           for (var cell in row) {
-            if (cell == null || cell.value == null) continue;
-
-            // Smart String Conversion: valid for both Text and Number cells
-            String val = cell.value.toString().trim();
-
-            // Fix: Excel might read 0101234 as 101234.0
-            if (val.endsWith('.0')) {
-              val = val.substring(0, val.length - 2);
-            }
+            if (cell == null) continue;
+            String val = cell.toString().trim();
 
             if (val.isEmpty) continue;
 
-            // Clean input: keep digits and '+' only
-            // e.g., "+20-10-..." -> "+2010..."
-            final cleanVal = val.replaceAll(RegExp(r'[^\d+]'), '');
+            // Normalization attempt for this cell
+            String processedPhone = _normalizePhoneNumber(val);
 
-            // --- SMART PARSING LOGIC ---
-            String processedPhone = cleanVal;
-
-            // Scenario 1: Egyptian number missing leading zero (Excel removed it)
-            // e.g. "10xxxxxxxxx" (10 digits) -> needs to be "010xxxxxxxxx"
-            if (processedPhone.length == 10) {
-              if (processedPhone.startsWith('10') ||
-                  processedPhone.startsWith('11') ||
-                  processedPhone.startsWith('12') ||
-                  processedPhone.startsWith('15')) {
-                processedPhone = '0$processedPhone';
-              }
-            }
-
-            // Scenario 2: Already correct Egyptian number
-            // e.g. "010xxxxxxxxx" (11 digits)
+            // Check if it matches Egyptian pattern explicitly
             bool isEgyptian = false;
+            // Check normalized version
             if (processedPhone.length == 11 &&
                 (processedPhone.startsWith('010') ||
                     processedPhone.startsWith('011') ||
                     processedPhone.startsWith('012') ||
                     processedPhone.startsWith('015'))) {
               isEgyptian = true;
-            } else if (processedPhone.length >= 12 &&
-                (processedPhone.startsWith('201') ||
-                    processedPhone.startsWith('+201'))) {
-              // International Egyptian format
-              isEgyptian = true;
             }
 
             // Decision Logic
             if (isEgyptian) {
+              // Priority 1: Found a strict Egyptian number
               foundPhone = processedPhone;
               foundStrictPhone = true;
-            } else if (!foundStrictPhone &&
-                foundPhone.isEmpty &&
-                phoneRegex.hasMatch(processedPhone)) {
-              // Generic number (International or other)
-              foundPhone = processedPhone;
-            } else {
-              // If not a phone, check if it's a name (longest text)
-              // Only consider it a name if it DOESN'T look like a phone number
-              if (!phoneRegex.hasMatch(cleanVal) &&
-                  val.length > longestTextLen) {
+            } else if (!foundStrictPhone) {
+              // Priority 2: Generic number check (if we haven't found an Egyptian one yet)
+              if (processedPhone.length >= 8 &&
+                  phoneRegex.hasMatch(processedPhone)) {
+                // If we found something that looks like a phone, keep it
+                // But if we already have a candidate, we might want to be careful
+                // For now, first valid phone wins if not Egyptian
+                if (foundPhone.isEmpty) {
+                  foundPhone = processedPhone;
+                }
+              }
+            }
+
+            // Name Logic:
+            // If it's NOT a phone number and it's longer than what we have, treat as Name
+            // (ignoring short codes or pure numbers that aren't phones)
+            if (!isEgyptian &&
+                !phoneRegex.hasMatch(processedPhone) &&
+                val.length > longestTextLen &&
+                val.length > 2) {
+              // Avoid treating "123" or generic small numbers as names
+              // check if val is just digits
+              if (int.tryParse(val) == null) {
                 longestTextLen = val.length;
                 foundName = val;
               }
@@ -192,7 +235,7 @@ class CallsRepository {
 
           // If we found a valid phone number in this row, add it
           if (foundPhone.isNotEmpty) {
-            // Basic validation: must be at least 10 digits (01xxxxxxxxx)
+            // Basic validation: must be at least 10 digits/characters
             if (foundPhone.length >= 10) {
               entries.add({
                 'phone': foundPhone,
@@ -204,8 +247,9 @@ class CallsRepository {
       }
 
       return entries;
-    } catch (e) {
-      throw Exception('Failed to import from Excel: $e');
+    } catch (e, stackTrace) {
+      throw Exception(
+          'Failed to import from Excel: $e. StackTrace: $stackTrace');
     }
   }
 
@@ -219,20 +263,27 @@ class CallsRepository {
         inputImage,
       );
 
-      // Extract phone numbers using a more flexible regex (supports Egyptian & international)
-      final phoneRegex = RegExp(
-        r'(\+?\d{1,3}[\s-]?)?0?\d{2,3}[\s-]?\d{3,4}[\s-]?\d{3,4}',
-      );
+      // Extract phone numbers: look for sequences of digits
+      // Regex: 8 to 15 digits, allowing for spaces/dashes
+      final phoneRegex = RegExp(r'(\+?\d[\d\s-]{7,15}\d)');
       final List<String> numbers = [];
 
       for (var block in recognizedText.blocks) {
         for (var line in block.lines) {
           final matches = phoneRegex.allMatches(line.text);
+
           for (var match in matches) {
-            // Clean number: remove everything except digits and plus
-            final number = match.group(0)?.replaceAll(RegExp(r'[^\d+]'), '');
-            if (number != null && number.length >= 8 && number.length <= 15) {
-              numbers.add(number);
+            final raw = match.group(0);
+            if (raw == null) continue;
+
+            final normalized = _normalizePhoneNumber(raw);
+
+            // Validation: 10-15 digits
+            if (normalized.length >= 10 && normalized.length <= 15) {
+              // Avoid duplicates if needed, or just add
+              if (!numbers.contains(normalized)) {
+                numbers.add(normalized);
+              }
             }
           }
         }

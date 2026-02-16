@@ -1,6 +1,8 @@
 name: Build iOS (Unsigned)
 
 on:
+  push:
+    branches: ["main"]
   workflow_dispatch:
 
 jobs:
@@ -8,26 +10,26 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
-      
+
       - uses: subosito/flutter-action@v2
         with:
-          channel: 'stable'
-          
+          channel: "stable"
+
       - name: Install dependencies
         run: flutter pub get
-        
+
       - name: Build iOS (No Codesign)
         run: flutter build ios --release --no-codesign
-        
+
       - name: Create Payload directory
         run: mkdir Payload
-        
+
       - name: Move App to Payload
         run: mv build/ios/iphoneos/Runner.app Payload/
-        
+
       - name: Zip Payload
         run: zip -r Runner.ipa Payload
-        
+
       - name: Upload IPA
         uses: actions/upload-artifact@v4
         with:

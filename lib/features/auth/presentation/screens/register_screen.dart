@@ -47,16 +47,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
           context: context,
           barrierDismissible: false,
           builder: (ctx) => AlertDialog(
-            title: const Text('تم التسجيل بنجاح / Success'),
+            title: const Text('تم التسجيل بنجاح'),
             content: const Text(
-                'تم إرسال رابط تفعيل إلى بريدك الإلكتروني. يرجى التحقق من الرسائل (بما في ذلك الرسائل غير المرغوب فيها) وتفعيل حسابك قبل تسجيل الدخول.\n\nA confirmation email has been sent. Please check your inbox (and spam folder) to verify your account before logging in.'),
+                'لقد أرسلنا رابط تأكيد إلى بريدك الإلكتروني.\n\nمن فضلك راجع صندوق الوارد (Inbox) وأيضاً الرسائل غير المرغوب فيها (Spam/Junk) للتأكد من وصول الرسالة.\n\nاضغط على الرابط في الرسالة لتفعيل حسابك قبل تسجيل الدخول.'),
             actions: [
               TextButton(
                 onPressed: () {
                   Navigator.pop(ctx);
                   context.go(AppConstants.routeLogin);
                 },
-                child: const Text('OK / حسناً'),
+                child: const Text('حسناً، فهمت'),
               ),
             ],
           ),

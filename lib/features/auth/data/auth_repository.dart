@@ -41,6 +41,21 @@ class AuthRepository {
         throw Exception('Registration failed');
       }
 
+      // Check if session is null (Email confirmation required)
+      if (authResponse.session == null) {
+        // Return a placeholder user so AuthProvider knows it succeeded
+        // The actual profile will be created by the trigger eventually,
+        // but we can't fetch it yet without a session/permissions.
+        return UserModel(
+          id: authResponse.user!.id,
+          email: email,
+          fullName: fullName,
+          role: 'user',
+          subscriptionStatus: 'pending',
+          createdAt: DateTime.now(),
+        );
+      }
+
       // The trigger will automatically create the user profile
       // Wait a bit for the trigger to complete
       await Future.delayed(const Duration(milliseconds: 500));
@@ -48,7 +63,16 @@ class AuthRepository {
       // Fetch the created profile
       final profile = await getCurrentUserProfile();
       if (profile == null) {
-        throw Exception('Failed to create user profile');
+        // If we have a session but can't get profile, it might be a delay
+        // Return a temporary profile based on auth data
+        return UserModel(
+          id: authResponse.user!.id,
+          email: email,
+          fullName: fullName,
+          role: 'user',
+          subscriptionStatus: 'pending',
+          createdAt: DateTime.now(),
+        );
       }
 
       return profile;
