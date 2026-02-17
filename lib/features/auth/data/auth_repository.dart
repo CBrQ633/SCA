@@ -1,4 +1,6 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:uuid/uuid.dart';
 import '../../../core/config/supabase_config.dart';
 import 'user_model.dart';
 
@@ -95,6 +97,17 @@ class AuthRepository {
       if (authResponse.user == null) {
         throw Exception('Login failed');
       }
+
+      // Generate new session ID
+      final sessionId = const Uuid().v4();
+
+      // Save session ID to SharedPreferences
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('last_session_id', sessionId);
+
+      // Update session ID in database
+      await _supabase.from('users').update({'last_session_id': sessionId}).eq(
+          'id', authResponse.user!.id);
 
       final profile = await getCurrentUserProfile();
       if (profile == null) {

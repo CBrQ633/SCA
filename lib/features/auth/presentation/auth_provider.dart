@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../data/auth_repository.dart';
 import '../data/user_model.dart';
@@ -108,6 +109,21 @@ class AuthProvider with ChangeNotifier {
     try {
       final user = await _authRepository.getCurrentUserProfile();
       if (user != null) {
+        // Check Session ID
+        final prefs = await SharedPreferences.getInstance();
+        final localSessionId = prefs.getString('last_session_id');
+
+        if (user.lastSessionId != null &&
+            localSessionId != user.lastSessionId) {
+          // Session mismatch! Logout.
+          debugPrint(
+              'Session mismatch: Local=$localSessionId, Remote=${user.lastSessionId}');
+          _errorMessage =
+              'تم تسجيل الدخول من جهاز آخر. (Logged in from another device)';
+          await logout();
+          return;
+        }
+
         _currentUser = user;
         debugPrint('User profile updated: ${_currentUser?.email}');
         notifyListeners();

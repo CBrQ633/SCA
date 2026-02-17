@@ -7,6 +7,7 @@ class UserModel {
   final DateTime? subscriptionStart;
   final DateTime? subscriptionEnd;
   final DateTime createdAt;
+  final String? lastSessionId;
 
   UserModel({
     required this.id,
@@ -17,6 +18,7 @@ class UserModel {
     this.subscriptionStart,
     this.subscriptionEnd,
     required this.createdAt,
+    this.lastSessionId,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
@@ -32,6 +34,7 @@ class UserModel {
       subscriptionEnd: json['subscription_end'] != null
           ? DateTime.parse(json['subscription_end'] as String)
           : null,
+      lastSessionId: json['last_session_id'] as String?,
       createdAt: DateTime.parse(json['created_at'] as String),
     );
   }
@@ -46,6 +49,7 @@ class UserModel {
       'subscription_start': subscriptionStart?.toIso8601String(),
       'subscription_end': subscriptionEnd?.toIso8601String(),
       'created_at': createdAt.toIso8601String(),
+      'last_session_id': lastSessionId,
     };
   }
 

@@ -55,7 +55,6 @@ class _AdminUserManagementScreenState extends State<AdminUserManagementScreen> {
             : null,
       });
       _loadUsers();
-      _loadUsers();
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -156,6 +155,10 @@ class _AdminUserManagementScreenState extends State<AdminUserManagementScreen> {
                               _toggleRole(user);
                             } else if (value == 'delete_user') {
                               _deleteUser(user);
+                            } else if (value == 'trial_3') {
+                              _giveTrial(user, 3);
+                            } else if (value == 'trial_7') {
+                              _giveTrial(user, 7);
                             }
                           },
                           itemBuilder: (context) => [
@@ -172,6 +175,14 @@ class _AdminUserManagementScreenState extends State<AdminUserManagementScreen> {
                                   : 'Make Admin'),
                             ),
                             const PopupMenuItem(
+                              value: 'trial_3',
+                              child: Text('Give 3-Day Trial'),
+                            ),
+                            const PopupMenuItem(
+                              value: 'trial_7',
+                              child: Text('Give 7-Day Trial'),
+                            ),
+                            const PopupMenuItem(
                               value: 'delete_user',
                               child: Text('Delete User',
                                   style: TextStyle(color: Colors.red)),
@@ -183,5 +194,28 @@ class _AdminUserManagementScreenState extends State<AdminUserManagementScreen> {
                   },
                 ),
     );
+  }
+
+  Future<void> _giveTrial(UserModel user, int days) async {
+    try {
+      final now = DateTime.now();
+      await _roleRepository.updateUser(user.id, {
+        'subscription_status': 'active',
+        'subscription_start': now.toIso8601String(),
+        'subscription_end': now.add(Duration(days: days)).toIso8601String(),
+        'trial_used': true,
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('تم منح $days أيام تجريبية بنجاح')),
+        );
+      }
+      _loadUsers();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
+    }
   }
 }

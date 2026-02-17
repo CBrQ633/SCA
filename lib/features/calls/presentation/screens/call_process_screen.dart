@@ -64,9 +64,22 @@ class _CallProcessScreenState extends State<CallProcessScreen> {
   }
 
   Future<void> _openWhatsApp(String phoneNumber) async {
-    // Basic WhatsApp URL
-    final cleanPhone = phoneNumber.replaceAll('+', '').replaceAll(' ', '');
-    final Uri launchUri = Uri.parse('https://wa.me/$cleanPhone');
+    // 1. Clean number
+    String cleanPhone = phoneNumber.replaceAll(RegExp(r'[^0-9+]'), '');
+
+    // 2. Handle Egyptian format (01xxx -> 201xxx)
+    if (cleanPhone.startsWith('0') && cleanPhone.length == 11) {
+      cleanPhone = '20${cleanPhone.substring(1)}';
+    } else if (cleanPhone.startsWith('+')) {
+      cleanPhone = cleanPhone.substring(1);
+    }
+
+    // 3. Prepare message
+    const String message = 'السلام عليكم، بخصوص الاتصال من SCA...';
+    final String encodedMsg = Uri.encodeComponent(message);
+
+    final Uri launchUri =
+        Uri.parse('https://wa.me/$cleanPhone?text=$encodedMsg');
 
     if (await canLaunchUrl(launchUri)) {
       await launchUrl(launchUri, mode: LaunchMode.externalApplication);
