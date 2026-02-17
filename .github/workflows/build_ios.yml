@@ -2,7 +2,7 @@ name: Build iOS (Unsigned)
 
 on:
   push:
-    branches: ["main"]
+    branches: ["main", "feature/*"]
   workflow_dispatch:
 
 jobs:
@@ -14,12 +14,24 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           channel: "stable"
+          cache: true
 
       - name: Install dependencies
         run: flutter pub get
 
+      - name: Cache CocoaPods
+        uses: actions/cache@v4
+        with:
+          path: ios/Pods
+          key: ${{ runner.os }}-pods-${{ hashFiles('ios/Podfile.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-pods-
+
       - name: Build iOS (No Codesign)
-        run: flutter build ios --release --no-codesign
+        run: |
+          # The workflow fails if Podfile isn't there, usually flutter build ios creates it
+          # but we need to ensure pods are handled.
+          flutter build ios --release --no-codesign
 
       - name: Create Payload directory
         run: mkdir Payload
