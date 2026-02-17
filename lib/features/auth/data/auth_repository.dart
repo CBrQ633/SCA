@@ -1,6 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import '../../../core/config/supabase_config.dart';
 import 'user_model.dart';
 
@@ -105,9 +106,12 @@ class AuthRepository {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('last_session_id', sessionId);
 
-      // Update session ID in database
-      await _supabase.from('users').update({'last_session_id': sessionId}).eq(
-          'id', authResponse.user!.id);
+      // Update session ID and FCM token in database
+      final fcmToken = await FirebaseMessaging.instance.getToken();
+      await _supabase.from('users').update({
+        'last_session_id': sessionId,
+        'fcm_token': fcmToken,
+      }).eq('id', authResponse.user!.id);
 
       final profile = await getCurrentUserProfile();
       if (profile == null) {

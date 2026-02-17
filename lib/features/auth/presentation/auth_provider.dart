@@ -1,15 +1,18 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../data/auth_repository.dart';
 import '../data/user_model.dart';
 
-class AuthProvider with ChangeNotifier {
+class AuthProvider with ChangeNotifier, WidgetsBindingObserver {
   final AuthRepository _authRepository = AuthRepository();
 
   UserModel? _currentUser;
   bool _isLoading = false;
   String? _errorMessage;
+  Timer? _sessionCheckTimer;
 
   UserModel? get currentUser => _currentUser;
   bool get isLoading => _isLoading;
@@ -21,6 +24,33 @@ class AuthProvider with ChangeNotifier {
   AuthProvider() {
     _initializeAuth();
     _listenToAuthStateChanges();
+    WidgetsBinding.instance.addObserver(this);
+    _startSessionCheckTimer();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      debugPrint('App resumed, refreshing user to check session...');
+      refreshUser();
+    }
+  }
+
+  void _startSessionCheckTimer() {
+    _sessionCheckTimer?.cancel();
+    _sessionCheckTimer = Timer.periodic(const Duration(minutes: 1), (timer) {
+      if (isAuthenticated) {
+        debugPrint('Periodic session check...');
+        refreshUser();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _sessionCheckTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> _initializeAuth() async {

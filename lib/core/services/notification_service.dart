@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
@@ -28,6 +29,10 @@ class NotificationService {
         InitializationSettings(android: androidSettings, iOS: iosSettings);
 
     await _localNotifications.initialize(settings: initSettings);
+
+    // Subscribe to news topic
+    await _firebaseMessaging.subscribeToTopic('news');
+    debugPrint('Subscribed to news topic');
 
     // Listen to foreground messages
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
