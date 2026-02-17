@@ -5,6 +5,10 @@ on:
     branches: ["main", "feature/*"]
   workflow_dispatch:
 
+defaults:
+  run:
+    working-directory: smart_call_assistant
+
 jobs:
   build_ios:
     runs-on: macos-latest
@@ -16,21 +20,23 @@ jobs:
           channel: "stable"
           cache: true
 
+      - name: Clean Project
+        run: flutter clean
+
       - name: Install dependencies
         run: flutter pub get
 
       - name: Cache CocoaPods
         uses: actions/cache@v4
         with:
-          path: ios/Pods
-          key: ${{ runner.os }}-pods-${{ hashFiles('ios/Podfile.lock') }}
+          path: smart_call_assistant/ios/Pods
+          key: ${{ runner.os }}-pods-${{ hashFiles('smart_call_assistant/ios/Podfile.lock') }}
           restore-keys: |
             ${{ runner.os }}-pods-
 
       - name: Build iOS (No Codesign)
         run: |
-          # The workflow fails if Podfile isn't there, usually flutter build ios creates it
-          # but we need to ensure pods are handled.
+          # Ensuring the ios directory is ready
           flutter build ios --release --no-codesign
 
       - name: Create Payload directory
@@ -46,4 +52,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: app-release
-          path: Runner.ipa
+          path: smart_call_assistant/Runner.ipa
