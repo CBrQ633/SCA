@@ -5,10 +5,6 @@ on:
     branches: ["main", "feature/*"]
   workflow_dispatch:
 
-defaults:
-  run:
-    working-directory: smart_call_assistant
-
 jobs:
   build_ios:
     runs-on: macos-latest
@@ -29,8 +25,8 @@ jobs:
       - name: Cache CocoaPods
         uses: actions/cache@v4
         with:
-          path: smart_call_assistant/ios/Pods
-          key: ${{ runner.os }}-pods-${{ hashFiles('smart_call_assistant/ios/Podfile.lock') }}
+          path: ios/Pods
+          key: ${{ runner.os }}-pods-${{ hashFiles('ios/Podfile.lock') }}
           restore-keys: |
             ${{ runner.os }}-pods-
 
@@ -52,4 +48,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: app-release
-          path: smart_call_assistant/Runner.ipa
+          path: Runner.ipa
