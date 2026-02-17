@@ -53,13 +53,13 @@ class _ReportsScreenState extends State<ReportsScreen> {
                 final calls = await _repository.getCallDetails();
                 await ExcelService()
                     .generateAndShareCallReport(calls, 'Total_Calls');
-                if (mounted) {
+                if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('تم إنشاء التقرير بنجاح')),
                   );
                 }
               } catch (e) {
-                if (mounted) {
+                if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(content: Text('Error exporting: $e')),
                   );

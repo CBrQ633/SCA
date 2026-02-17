@@ -89,16 +89,23 @@ class CallEntry {
   });
 
   factory CallEntry.fromJson(Map<String, dynamic> json) {
+    String rawStatus = json['status'] as String? ?? 'pending';
+    // Normalize status from different tables
+    if (rawStatus == 'called') rawStatus = 'answered';
+    if (rawStatus == 'no_answer') rawStatus = 'not_answered';
+
     return CallEntry(
-      id: json['id'] as String,
-      listId: json['list_id'] as String,
-      phoneNumber: json['phone_number'] as String,
-      customerName: json['customer_name'] as String?,
-      status: json['status'] as String,
-      calledAt: json['called_at'] != null
+      id: json['id'] as String? ?? '',
+      listId: json['list_id'] as String? ?? '',
+      phoneNumber: (json['phone_number'] ?? json['phone']) as String? ?? '',
+      customerName: (json['customer_name'] ?? json['name']) as String?,
+      status: rawStatus,
+      calledAt: (json['called_at'] != null)
           ? DateTime.parse(json['called_at'] as String)
-          : null,
-      position: json['position'] as int,
+          : (rawStatus != 'pending' && json['updated_at'] != null)
+              ? DateTime.parse(json['updated_at'] as String)
+              : null,
+      position: json['position'] as int? ?? 0,
     );
   }
 

@@ -1,7 +1,7 @@
 name: smart_call_assistant
 description: Smart Call Assistant - Sales Call Organization Tool
 publish_to: "none"
-version: 1.0.2+3
+version: 1.0.3+4
 
 environment:
   sdk: ">=3.0.0 <4.0.0"
@@ -37,7 +37,7 @@ dependencies:
   shared_preferences: ^2.2.2
 
   # Internationalization
-  intl: any
+  intl: ^0.20.2
 
   # UI Components
   flutter_svg: ^2.0.10
@@ -55,7 +55,7 @@ dependencies:
   firebase_core: ^4.4.0
   firebase_messaging: ^16.1.1
   flutter_local_notifications: ^20.1.0
-  share_plus: ^12.0.1
+  share_plus: ^10.0.0
 
 dev_dependencies:
   flutter_test:
