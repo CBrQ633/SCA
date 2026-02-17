@@ -10,10 +10,12 @@ class NewsRepository {
   // Get all active announcements
   Future<List<NewsAnnouncement>> getActiveAnnouncements() async {
     try {
+      final now = DateTime.now().toIso8601String();
       final response = await _supabase
           .from('news_announcements')
           .select()
           .eq('is_active', true)
+          .or('expiry_date.is.null,expiry_date.gt.$now')
           .order('created_at', ascending: false);
 
       return (response as List)
@@ -45,6 +47,7 @@ class NewsRepository {
     required String title,
     required String content,
     required String createdBy,
+    DateTime? expiryDate,
     List<File>? imageFiles,
   }) async {
     try {
@@ -80,6 +83,7 @@ class NewsRepository {
         'created_by': createdBy,
         'is_active': true,
         'image_urls': imageUrls,
+        'expiry_date': expiryDate?.toIso8601String(),
       });
     } catch (e) {
       if (e.toString().contains('404')) {
@@ -95,6 +99,7 @@ class NewsRepository {
     required String id,
     required String title,
     required String content,
+    DateTime? expiryDate,
     List<File>? imageFiles,
     List<String>? existingImageUrls,
   }) async {
@@ -128,6 +133,7 @@ class NewsRepository {
         'content': content,
         'content_ar': content,
         'image_urls': imageUrls,
+        'expiry_date': expiryDate?.toIso8601String(),
       }).eq('id', id);
     } catch (e) {
       throw Exception('Failed to update announcement: $e');

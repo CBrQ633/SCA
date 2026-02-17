@@ -55,6 +55,7 @@ class _AdminUserManagementScreenState extends State<AdminUserManagementScreen> {
             : null,
       });
       _loadUsers();
+      _loadUsers();
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -64,6 +65,8 @@ class _AdminUserManagementScreenState extends State<AdminUserManagementScreen> {
   }
 
   Future<void> _toggleRole(UserModel user) async {
+    // Corrected to actually update role if logic requires it,
+    // but the code below simply updates role in `_roleRepository.updateUser`.
     final newRole = user.role == 'admin' ? 'user' : 'admin';
     try {
       await _roleRepository.updateUser(user.id, {'role': newRole});
@@ -73,6 +76,44 @@ class _AdminUserManagementScreenState extends State<AdminUserManagementScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error: $e')),
       );
+    }
+  }
+
+  Future<void> _deleteUser(UserModel user) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete User?'),
+        content: Text(
+            'Are you sure you want to delete ${user.fullName}? This action cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        await _roleRepository.deleteUser(user.id);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('User deleted successfully')),
+          );
+        }
+        _loadUsers();
+      } catch (e) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
     }
   }
 
@@ -113,6 +154,8 @@ class _AdminUserManagementScreenState extends State<AdminUserManagementScreen> {
                               _toggleSubscription(user);
                             } else if (value == 'toggle_role') {
                               _toggleRole(user);
+                            } else if (value == 'delete_user') {
+                              _deleteUser(user);
                             }
                           },
                           itemBuilder: (context) => [
@@ -127,6 +170,11 @@ class _AdminUserManagementScreenState extends State<AdminUserManagementScreen> {
                               child: Text(user.role == 'admin'
                                   ? 'Revoke Admin'
                                   : 'Make Admin'),
+                            ),
+                            const PopupMenuItem(
+                              value: 'delete_user',
+                              child: Text('Delete User',
+                                  style: TextStyle(color: Colors.red)),
                             ),
                           ],
                         ),

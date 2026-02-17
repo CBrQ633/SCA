@@ -91,6 +91,7 @@ class _AdminNewsScreenState extends State<AdminNewsScreen> {
   void _showAddEditDialog([NewsAnnouncement? item]) {
     final titleCtrl = TextEditingController(text: item?.title);
     final contentCtrl = TextEditingController(text: item?.content);
+    DateTime? selectedExpiryDate = item?.expiryDate;
     List<File> pickedImages = [];
     List<String> currentImageUrls = List<String>.from(item?.imageUrls ?? []);
 
@@ -112,6 +113,54 @@ class _AdminNewsScreenState extends State<AdminNewsScreen> {
                   controller: contentCtrl,
                   decoration: const InputDecoration(labelText: 'المحتوى'),
                   maxLines: 5,
+                ),
+                const SizedBox(height: 16),
+                // Expiry Date Picker
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          selectedExpiryDate == null
+                              ? 'تاريخ انتهاء الصلاحية (اختياري)'
+                              : 'ينتهي في: ${DateFormat('yyyy-MM-dd').format(selectedExpiryDate!)}',
+                          style: TextStyle(
+                              color: selectedExpiryDate == null
+                                  ? Colors.grey
+                                  : Colors.black),
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.calendar_today,
+                            color: Colors.blue),
+                        onPressed: () async {
+                          final date = await showDatePicker(
+                            context: context,
+                            initialDate: selectedExpiryDate ??
+                                DateTime.now().add(const Duration(days: 3)),
+                            firstDate: DateTime.now(),
+                            lastDate:
+                                DateTime.now().add(const Duration(days: 365)),
+                          );
+                          if (date != null) {
+                            setDialogState(() => selectedExpiryDate = date);
+                          }
+                        },
+                      ),
+                      if (selectedExpiryDate != null)
+                        IconButton(
+                          icon: const Icon(Icons.clear, color: Colors.red),
+                          onPressed: () =>
+                              setDialogState(() => selectedExpiryDate = null),
+                        ),
+                    ],
+                  ),
                 ),
                 const SizedBox(height: 16),
                 // Image Picker
@@ -234,6 +283,7 @@ class _AdminNewsScreenState extends State<AdminNewsScreen> {
                       title: title,
                       content: content,
                       createdBy: user.id,
+                      expiryDate: selectedExpiryDate,
                       imageFiles: pickedImages,
                     );
                   } else {
@@ -242,6 +292,7 @@ class _AdminNewsScreenState extends State<AdminNewsScreen> {
                       id: item.id,
                       title: title,
                       content: content,
+                      expiryDate: selectedExpiryDate,
                       imageFiles: pickedImages,
                       existingImageUrls: currentImageUrls,
                     );

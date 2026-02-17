@@ -115,6 +115,7 @@ class NewsAnnouncement {
   final String createdBy;
   final DateTime createdAt;
   final bool isActive;
+  final DateTime? expiryDate;
 
   NewsAnnouncement({
     required this.id,
@@ -124,6 +125,7 @@ class NewsAnnouncement {
     required this.createdBy,
     required this.createdAt,
     required this.isActive,
+    this.expiryDate,
   });
 
   factory NewsAnnouncement.fromJson(Map<String, dynamic> json) {
@@ -140,6 +142,9 @@ class NewsAnnouncement {
       createdBy: json['created_by'] as String? ?? 'unknown',
       createdAt: DateTime.parse(json['created_at'] as String),
       isActive: json['is_active'] as bool? ?? true,
+      expiryDate: json['expiry_date'] != null
+          ? DateTime.parse(json['expiry_date'] as String)
+          : null,
     );
   }
 

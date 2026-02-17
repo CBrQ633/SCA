@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../data/reports_repository.dart';
 import '../../data/models/report_stats.dart';
+import '../../../../core/services/excel_service.dart';
 
 class ReportsScreen extends StatefulWidget {
   const ReportsScreen({super.key});
@@ -40,7 +41,36 @@ class _ReportsScreenState extends State<ReportsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('تقارير النظام والإحصائيات')),
+      appBar: AppBar(
+        title: const Text('تقارير النظام والإحصائيات'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.file_download),
+            tooltip: 'تصدير إلى Excel',
+            onPressed: () async {
+              setState(() => _isLoading = true);
+              try {
+                final calls = await _repository.getCallDetails();
+                await ExcelService()
+                    .generateAndShareCallReport(calls, 'Total_Calls');
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('تم إنشاء التقرير بنجاح')),
+                  );
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Error exporting: $e')),
+                  );
+                }
+              } finally {
+                if (mounted) setState(() => _isLoading = false);
+              }
+            },
+          ),
+        ],
+      ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(

@@ -165,4 +165,14 @@ class AuthRepository {
     final response = await _supabase.from('users').select('id');
     return (response as List).length;
   }
+
+  // Delete user (Admin only)
+  Future<void> deleteUser(String userId) async {
+    try {
+      await _supabase
+          .rpc('delete_user_account', params: {'target_user_id': userId});
+    } catch (e) {
+      throw Exception('Failed to delete user: $e');
+    }
+  }
 }
