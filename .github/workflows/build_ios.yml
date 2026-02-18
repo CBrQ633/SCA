@@ -22,9 +22,6 @@ jobs:
       - name: Get Dependencies
         run: flutter pub get
 
-      - name: Ensure iOS config is generated
-        run: flutter build ios --config-only
-
       - name: Build iOS (No Codesign)
         run: flutter build ios --release --no-codesign
 
