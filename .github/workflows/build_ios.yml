@@ -19,21 +19,20 @@ jobs:
       - name: Clean Project
         run: flutter clean
 
-      - name: Install dependencies
+      - name: Get Dependencies
         run: flutter pub get
 
-      - name: Cache CocoaPods
-        uses: actions/cache@v4
-        with:
-          path: ios/Pods
-          key: ${{ runner.os }}-pods-${{ hashFiles('ios/Podfile.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-pods-
+      - name: Reset CocoaPods
+        run: |
+          cd ios
+          rm -f Flutter/Generated.xcconfig
+          rm -f Flutter/flutter_export_environment.sh
+          pod deintegrate
+          pod install --repo-update
+        shell: bash
 
       - name: Build iOS (No Codesign)
-        run: |
-          # Ensuring the ios directory is ready
-          flutter build ios --release --no-codesign
+        run: flutter build ios --release --no-codesign
 
       - name: Create Payload directory
         run: mkdir Payload
