@@ -1,0 +1,1070 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Call Assistant - نظام إدارة المكالمات الذكي</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;900&display=swap');
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #667eea;
+            --secondary: #764ba2;
+            --accent: #f093fb;
+            --dark: #1a1a2e;
+            --light: #f8f9fa;
+            --success: #4ade80;
+            --warning: #fbbf24;
+            --gradient-1: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --gradient-2: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            --gradient-3: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        }
+
+        body {
+            font-family: 'Cairo', sans-serif;
+            background: linear-gradient(135deg, var(--dark) 0%, #16213e 100%);
+            color: var(--light);
+            overflow-x: hidden;
+            scroll-behavior: smooth;
+            perspective: 1000px;
+        }
+
+        /* Animated Background */
+        .bg-animation {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            overflow: hidden;
+        }
+
+        .bg-animation span {
+            position: absolute;
+            display: block;
+            width: 20px;
+            height: 20px;
+            background: rgba(102, 126, 234, 0.2);
+            animation: float 25s infinite;
+            border-radius: 50%;
+        }
+
+        .bg-animation span:nth-child(1) {
+            left: 25%;
+            animation-delay: 0s;
+        }
+
+        .bg-animation span:nth-child(2) {
+            left: 10%;
+            animation-delay: 2s;
+            animation-duration: 12s;
+        }
+
+        .bg-animation span:nth-child(3) {
+            left: 70%;
+            animation-delay: 4s;
+        }
+
+        .bg-animation span:nth-child(4) {
+            left: 40%;
+            animation-delay: 0s;
+            animation-duration: 18s;
+        }
+
+        .bg-animation span:nth-child(5) {
+            left: 65%;
+            animation-delay: 0s;
+        }
+
+        .bg-animation span:nth-child(6) {
+            left: 75%;
+            animation-delay: 3s;
+        }
+
+        .bg-animation span:nth-child(7) {
+            left: 35%;
+            animation-delay: 7s;
+        }
+
+        .bg-animation span:nth-child(8) {
+            left: 50%;
+            animation-delay: 15s;
+            animation-duration: 45s;
+        }
+
+        .bg-animation span:nth-child(9) {
+            left: 20%;
+            animation-delay: 2s;
+            animation-duration: 35s;
+        }
+
+        .bg-animation span:nth-child(10) {
+            left: 85%;
+            animation-delay: 0s;
+            animation-duration: 11s;
+        }
+
+        @keyframes float {
+            0% {
+                transform: translateY(100vh) scale(0);
+                opacity: 0;
+            }
+
+            50% {
+                opacity: 1;
+            }
+
+            100% {
+                transform: translateY(-100vh) scale(1);
+                opacity: 0;
+            }
+        }
+
+        /* Container */
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        /* Hero Section */
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            position: relative;
+            padding: 100px 20px;
+        }
+
+        .hero-content {
+            animation: fadeInUp 1s ease-out;
+        }
+
+        .hero h1 {
+            font-size: clamp(2.5rem, 8vw, 5rem);
+            font-weight: 900;
+            background: linear-gradient(135deg, var(--primary), var(--accent), var(--primary));
+            background-size: 200% 200%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 20px;
+            animation: glow 2s ease-in-out infinite alternate, gradient-shift 4s ease infinite;
+            transform-style: preserve-3d;
+            text-shadow: 0 10px 30px rgba(102, 126, 234, 0.5);
+        }
+
+        @keyframes gradient-shift {
+
+            0%,
+            100% {
+                background-position: 0% 50%;
+            }
+
+            50% {
+                background-position: 100% 50%;
+            }
+        }
+
+        @keyframes glow {
+            from {
+                filter: drop-shadow(0 0 20px rgba(102, 126, 234, 0.5));
+            }
+
+            to {
+                filter: drop-shadow(0 0 40px rgba(240, 147, 251, 0.8));
+            }
+        }
+
+        .hero p {
+            font-size: clamp(1.2rem, 3vw, 1.8rem);
+            margin-bottom: 40px;
+            opacity: 0.9;
+            animation: fadeInUp 1s ease-out 0.3s both;
+        }
+
+        .cta-button {
+            display: inline-block;
+            padding: 18px 50px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            text-decoration: none;
+            border-radius: 50px;
+            font-size: 1.3rem;
+            font-weight: 700;
+            transition: all 0.3s ease;
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+            animation: fadeInUp 1s ease-out 0.6s both, pulse 2s ease-in-out infinite;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .cta-button::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+
+        .cta-button:hover::before {
+            width: 300px;
+            height: 300px;
+        }
+
+        .cta-button:hover {
+            transform: translateY(-8px) scale(1.05);
+            box-shadow: 0 20px 60px rgba(102, 126, 234, 0.8),
+                0 0 40px rgba(240, 147, 251, 0.5);
+            animation: pulse 2s ease-in-out infinite, shake 0.5s ease;
+        }
+
+        @keyframes shake {
+
+            0%,
+            100% {
+                transform: translateY(-8px) scale(1.05) rotate(0deg);
+            }
+
+            25% {
+                transform: translateY(-8px) scale(1.05) rotate(-2deg);
+            }
+
+            75% {
+                transform: translateY(-8px) scale(1.05) rotate(2deg);
+            }
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(1.05);
+            }
+        }
+
+        /* Section Styles */
+        section {
+            padding: 100px 20px;
+            position: relative;
+        }
+
+        .section-title {
+            text-align: center;
+            font-size: clamp(2rem, 5vw, 3.5rem);
+            font-weight: 900;
+            margin-bottom: 60px;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: fadeInUp 1s ease-out;
+        }
+
+        /* Features Grid */
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 40px;
+            margin-top: 60px;
+        }
+
+        .feature-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            animation: fadeInUp 1s ease-out, float-card 6s ease-in-out infinite;
+            position: relative;
+            overflow: hidden;
+            transform-style: preserve-3d;
+            cursor: pointer;
+        }
+
+        @keyframes float-card {
+
+            0%,
+            100% {
+                transform: translateY(0px) rotateX(0deg);
+            }
+
+            50% {
+                transform: translateY(-10px) rotateX(2deg);
+            }
+        }
+
+        .feature-card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(45deg, transparent, rgba(102, 126, 234, 0.1), transparent);
+            transform: rotate(45deg);
+            transition: all 0.6s ease;
+        }
+
+        .feature-card:hover::before {
+            left: 100%;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-20px) scale(1.05) rotateY(5deg);
+            box-shadow: 0 30px 80px rgba(102, 126, 234, 0.5),
+                0 0 60px rgba(240, 147, 251, 0.3),
+                inset 0 0 30px rgba(255, 255, 255, 0.1);
+            border-color: var(--accent);
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .feature-icon {
+            font-size: 3.5rem;
+            margin-bottom: 20px;
+            display: inline-block;
+            animation: bounce 2s ease-in-out infinite, rotate-icon 10s linear infinite;
+            filter: drop-shadow(0 5px 15px rgba(102, 126, 234, 0.5));
+            transition: all 0.3s ease;
+        }
+
+        .feature-card:hover .feature-icon {
+            transform: scale(1.2) rotateY(360deg);
+            filter: drop-shadow(0 10px 30px rgba(240, 147, 251, 0.8));
+        }
+
+        @keyframes rotate-icon {
+
+            0%,
+            100% {
+                transform: rotate(0deg);
+            }
+
+            25% {
+                transform: rotate(-5deg);
+            }
+
+            75% {
+                transform: rotate(5deg);
+            }
+        }
+
+        @keyframes bounce {
+
+            0%,
+            100% {
+                transform: translateY(0);
+            }
+
+            50% {
+                transform: translateY(-10px);
+            }
+        }
+
+        .feature-card h3 {
+            font-size: 1.8rem;
+            margin-bottom: 15px;
+            color: var(--accent);
+        }
+
+        .feature-card p {
+            opacity: 0.8;
+            line-height: 1.8;
+            font-size: 1.1rem;
+        }
+
+        /* Screenshots Section */
+        .screenshots-slider {
+            display: flex;
+            gap: 30px;
+            overflow-x: auto;
+            padding: 40px 0;
+            scroll-snap-type: x mandatory;
+            scrollbar-width: thin;
+            scrollbar-color: var(--primary) rgba(255, 255, 255, 0.1);
+        }
+
+        .screenshots-slider::-webkit-scrollbar {
+            height: 10px;
+        }
+
+        .screenshots-slider::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+        }
+
+        .screenshots-slider::-webkit-scrollbar-thumb {
+            background: var(--primary);
+            border-radius: 10px;
+        }
+
+        .screenshot-card {
+            min-width: 350px;
+            scroll-snap-align: center;
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.4s ease;
+            animation: fadeInUp 1s ease-out;
+        }
+
+        .screenshot-card:hover {
+            transform: scale(1.08) translateY(-10px) rotateZ(2deg);
+            box-shadow: 0 30px 80px rgba(102, 126, 234, 0.6),
+                0 0 50px rgba(240, 147, 251, 0.4);
+            border-color: var(--accent);
+        }
+
+        .screenshot-placeholder {
+            width: 100%;
+            height: 600px;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.2), rgba(118, 75, 162, 0.2));
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+            margin-bottom: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .screenshot-placeholder::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            animation: shimmer 3s infinite;
+        }
+
+        @keyframes shimmer {
+            0% {
+                transform: translateX(-100%) translateY(-100%) rotate(45deg);
+            }
+
+            100% {
+                transform: translateX(100%) translateY(100%) rotate(45deg);
+            }
+        }
+
+        .screenshot-card h4 {
+            font-size: 1.5rem;
+            margin-bottom: 10px;
+            color: var(--accent);
+            text-align: center;
+        }
+
+        .screenshot-card p {
+            opacity: 0.8;
+            text-align: center;
+            line-height: 1.6;
+        }
+
+        /* Phone Parade Section */
+        .phone-parade {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 40px;
+            padding: 80px 20px;
+            flex-wrap: wrap;
+            perspective: 2000px;
+        }
+
+        .phone-container {
+            animation: phone-wave 3s ease-in-out infinite, phone-float 6s ease-in-out infinite;
+            transform-style: preserve-3d;
+        }
+
+        @keyframes phone-wave {
+
+            0%,
+            100% {
+                transform: translateY(0px) rotateY(0deg);
+            }
+
+            25% {
+                transform: translateY(-30px) rotateY(10deg);
+            }
+
+            50% {
+                transform: translateY(0px) rotateY(0deg);
+            }
+
+            75% {
+                transform: translateY(-30px) rotateY(-10deg);
+            }
+        }
+
+        @keyframes phone-float {
+
+            0%,
+            100% {
+                transform: translateX(0px);
+            }
+
+            50% {
+                transform: translateX(20px);
+            }
+        }
+
+        .phone {
+            width: 180px;
+            height: 360px;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            border-radius: 30px;
+            padding: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5),
+                0 0 30px rgba(102, 126, 234, 0.3),
+                inset 0 0 20px rgba(255, 255, 255, 0.05);
+            position: relative;
+            transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            cursor: pointer;
+            transform-style: preserve-3d;
+        }
+
+        .phone:hover {
+            transform: scale(1.15) rotateY(15deg) rotateX(5deg);
+            box-shadow: 0 30px 90px rgba(0, 0, 0, 0.7),
+                0 0 60px rgba(240, 147, 251, 0.6),
+                inset 0 0 30px rgba(255, 255, 255, 0.1);
+        }
+
+        .phone-screen {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border-radius: 22px;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .phone-notch {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100px;
+            height: 25px;
+            background: #1a1a2e;
+            border-radius: 0 0 15px 15px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+        }
+
+        .phone-content {
+            text-align: center;
+            z-index: 1;
+            animation: content-pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes content-pulse {
+
+            0%,
+            100% {
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(1.1);
+            }
+        }
+
+        .app-icon {
+            font-size: 4rem;
+            margin-bottom: 15px;
+            filter: drop-shadow(0 5px 15px rgba(0, 0, 0, 0.5));
+            animation: icon-spin 10s linear infinite;
+        }
+
+        @keyframes icon-spin {
+
+            0%,
+            100% {
+                transform: rotate(0deg);
+            }
+
+            25% {
+                transform: rotate(-10deg);
+            }
+
+            75% {
+                transform: rotate(10deg);
+            }
+        }
+
+        .phone:hover .app-icon {
+            animation: icon-spin 10s linear infinite, icon-bounce 0.5s ease;
+        }
+
+        @keyframes icon-bounce {
+
+            0%,
+            100% {
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(1.3) rotate(360deg);
+            }
+        }
+
+        .app-text {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: white;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+            letter-spacing: 1px;
+        }
+
+
+        /* Stats Section */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 40px;
+            margin-top: 60px;
+        }
+
+        .stat-card {
+            text-align: center;
+            padding: 40px;
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.4s ease;
+            animation: fadeInUp 1s ease-out;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 20px 60px rgba(102, 126, 234, 0.3);
+        }
+
+        .stat-number {
+            font-size: 4rem;
+            font-weight: 900;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 10px;
+            display: block;
+        }
+
+        .stat-label {
+            font-size: 1.3rem;
+            opacity: 0.8;
+        }
+
+        /* Download Section */
+        .download-section {
+            text-align: center;
+            padding: 120px 20px;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+            border-radius: 30px;
+            margin: 60px 0;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .download-section::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(102, 126, 234, 0.1) 0%, transparent 70%);
+            animation: rotate 20s linear infinite;
+        }
+
+        @keyframes rotate {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .download-section h2 {
+            font-size: clamp(2rem, 5vw, 3.5rem);
+            margin-bottom: 30px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .download-section p {
+            font-size: 1.5rem;
+            margin-bottom: 50px;
+            opacity: 0.9;
+            position: relative;
+            z-index: 1;
+        }
+
+        .download-button {
+            display: inline-block;
+            padding: 25px 70px;
+            background: linear-gradient(135deg, var(--success), #22c55e);
+            color: white;
+            text-decoration: none;
+            border-radius: 50px;
+            font-size: 1.8rem;
+            font-weight: 900;
+            transition: all 0.3s ease;
+            box-shadow: 0 15px 40px rgba(74, 222, 128, 0.4);
+            position: relative;
+            z-index: 1;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        .download-button:hover {
+            transform: translateY(-5px) scale(1.05);
+            box-shadow: 0 20px 50px rgba(74, 222, 128, 0.6);
+        }
+
+        .download-note {
+            margin-top: 30px;
+            font-size: 1.1rem;
+            opacity: 0.7;
+            position: relative;
+            z-index: 1;
+            background: rgba(251, 191, 36, 0.2);
+            padding: 15px 30px;
+            border-radius: 15px;
+            display: inline-block;
+            border: 1px solid rgba(251, 191, 36, 0.3);
+        }
+
+        /* Footer */
+        footer {
+            text-align: center;
+            padding: 40px 20px;
+            opacity: 0.7;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        /* Animations */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Scroll Reveal */
+        .reveal {
+            opacity: 0;
+            transform: translateY(50px);
+            transition: all 0.8s ease;
+        }
+
+        .reveal.active {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 2.5rem;
+            }
+
+            .features-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .screenshot-card {
+                min-width: 280px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Animated Background -->
+    <div class="bg-animation">
+        <span></span>
+        <span></span>
+        <span></span>
+        <span></span>
+        <span></span>
+        <span></span>
+        <span></span>
+        <span></span>
+        <span></span>
+        <span></span>
+    </div>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="hero-content">
+            <h1>Smart Call Assistant</h1>
+            <p>نظام إدارة المكالمات الذكي - حل احترافي لإدارة مكالماتك بكفاءة</p>
+            <a href="#features" class="cta-button">اكتشف المزايا</a>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section id="features">
+        <div class="container">
+            <h2 class="section-title reveal">المميزات الرئيسية</h2>
+            <div class="features-grid">
+                <div class="feature-card reveal">
+                    <div class="feature-icon">📞</div>
+                    <h3>إدارة المكالمات الذكية</h3>
+                    <p>نظام متكامل لإدارة قوائم المكالمات مع إمكانية استيراد البيانات من Excel وتتبع حالة كل مكالمة بدقة
+                    </p>
+                </div>
+
+                <div class="feature-card reveal">
+                    <div class="feature-icon">👥</div>
+                    <h3>إدارة المستخدمين</h3>
+                    <p>نظام متقدم لإدارة المستخدمين مع صلاحيات متعددة (Admin/User) وإدارة الاشتراكات بسهولة</p>
+                </div>
+
+                <div class="feature-card reveal">
+                    <div class="feature-icon">📊</div>
+                    <h3>تقارير شاملة</h3>
+                    <p>تقارير تفصيلية عن أداء المكالمات والإحصائيات مع إمكانية التصدير إلى Excel</p>
+                </div>
+
+                <div class="feature-card reveal">
+                    <div class="feature-icon">📰</div>
+                    <h3>نظام الأخبار والإعلانات</h3>
+                    <p>إدارة الأخبار والإعلانات مع دعم الصور وتواريخ الانتهاء التلقائية</p>
+                </div>
+
+                <div class="feature-card reveal">
+                    <div class="feature-icon">💳</div>
+                    <h3>نظام الاشتراكات</h3>
+                    <p>إدارة اشتراكات المستخدمين (شهري/ربع سنوي) مع نظام دفع آمن ومراجعة الطلبات</p>
+                </div>
+
+                <div class="feature-card reveal">
+                    <div class="feature-icon">🔒</div>
+                    <h3>أمان عالي</h3>
+                    <p>نظام مصادقة متقدم مع Supabase وحماية البيانات بأعلى معايير الأمان</p>
+                </div>
+
+                <div class="feature-card reveal">
+                    <div class="feature-icon">📱</div>
+                    <h3>واجهة عربية جميلة</h3>
+                    <p>تصميم عصري وجذاب مع دعم كامل للغة العربية وتجربة مستخدم سلسة</p>
+                </div>
+
+                <div class="feature-card reveal">
+                    <div class="feature-icon">📥</div>
+                    <h3>استيراد من Excel</h3>
+                    <p>استيراد ذكي لأرقام الهواتف من ملفات Excel مع التعرف التلقائي على الأرقام المصرية</p>
+                </div>
+
+                <div class="feature-card reveal">
+                    <div class="feature-icon">🎯</div>
+                    <h3>تتبع دقيق</h3>
+                    <p>تتبع حالة كل مكالمة (معلقة/تم الرد/لم يرد) مع إحصائيات فورية</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Animated Phone Parade Section -->
+    <section>
+        <div class="container">
+            <h2 class="section-title reveal">موكب التطبيق</h2>
+            <div class="phone-parade">
+                <div class="phone-container" style="animation-delay: 0s;">
+                    <div class="phone">
+                        <div class="phone-screen">
+                            <div class="phone-notch"></div>
+                            <div class="phone-content">
+                                <div class="app-icon">�</div>
+                                <div class="app-text">Calls</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="phone-container" style="animation-delay: 0.2s;">
+                    <div class="phone">
+                        <div class="phone-screen">
+                            <div class="phone-notch"></div>
+                            <div class="phone-content">
+                                <div class="app-icon">📊</div>
+                                <div class="app-text">Reports</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="phone-container" style="animation-delay: 0.4s;">
+                    <div class="phone">
+                        <div class="phone-screen">
+                            <div class="phone-notch"></div>
+                            <div class="phone-content">
+                                <div class="app-icon">👥</div>
+                                <div class="app-text">Users</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="phone-container" style="animation-delay: 0.6s;">
+                    <div class="phone">
+                        <div class="phone-screen">
+                            <div class="phone-notch"></div>
+                            <div class="phone-content">
+                                <div class="app-icon">�</div>
+                                <div class="app-text">News</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="phone-container" style="animation-delay: 0.8s;">
+                    <div class="phone">
+                        <div class="phone-screen">
+                            <div class="phone-notch"></div>
+                            <div class="phone-content">
+                                <div class="app-icon">💳</div>
+                                <div class="app-text">Subscribe</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Stats Section -->
+    <section>
+        <div class="container">
+            <h2 class="section-title reveal">لماذا Smart Call Assistant؟</h2>
+            <div class="stats-grid">
+                <div class="stat-card reveal">
+                    <span class="stat-number">100%</span>
+                    <span class="stat-label">دعم اللغة العربية</span>
+                </div>
+
+                <div class="stat-card reveal">
+                    <span class="stat-number">⚡</span>
+                    <span class="stat-label">أداء سريع</span>
+                </div>
+
+                <div class="stat-card reveal">
+                    <span class="stat-number">🔒</span>
+                    <span class="stat-label">أمان عالي</span>
+                </div>
+
+                <div class="stat-card reveal">
+                    <span class="stat-number">📱</span>
+                    <span class="stat-label">تصميم عصري</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Download Section -->
+    <section>
+        <div class="container">
+            <div class="download-section reveal">
+                <h2>جاهز للبدء؟</h2>
+                <p>حمّل التطبيق الآن وابدأ في إدارة مكالماتك بكفاءة</p>
+                <!-- ضع رابط التحميل هنا بعد رفع الملف -->
+                <a href="YOUR_DOWNLOAD_LINK_HERE" class="download-button" id="downloadBtn">
+                    📥 تحميل التطبيق
+                </a>
+                <div class="download-note">
+                    💡 ملاحظة: قم بتحديث رابط التحميل في الكود (ابحث عن YOUR_DOWNLOAD_LINK_HERE)
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container">
+            <p>&copy; 2026 Smart Call Assistant. جميع الحقوق محفوظة.</p>
+        </div>
+    </footer>
+
+    <script>
+        // Scroll Reveal Animation
+        function reveal() {
+            const reveals = document.querySelectorAll('.reveal');
+
+            reveals.forEach(element => {
+                const windowHeight = window.innerHeight;
+                const elementTop = element.getBoundingClientRect().top;
+                const elementVisible = 150;
+
+                if (elementTop < windowHeight - elementVisible) {
+                    element.classList.add('active');
+                }
+            });
+        }
+
+        window.addEventListener('scroll', reveal);
+        reveal(); // Initial check
+
+        // Smooth Scroll
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+
+        // Download Button Alert
+        document.getElementById('downloadBtn').addEventListener('click', function (e) {
+            if (this.getAttribute('href') === 'YOUR_DOWNLOAD_LINK_HERE') {
+                e.preventDefault();
+                alert('⚠️ يرجى تحديث رابط التحميل أولاً!\n\nابحث في الكود عن:\nYOUR_DOWNLOAD_LINK_HERE\n\nواستبدله برابط ملف APK الخاص بك');
+            }
+        });
+    </script>
+</body>
+
+</html>

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:smart_call_assistant/features/calls/data/calls_repository.dart';
@@ -27,15 +28,17 @@ class _CallProcessScreenState extends State<CallProcessScreen> {
   Future<void> _loadPendingItems() async {
     try {
       final allItems = await _repository.getListItems(widget.listId);
-      // Filter for pending items only? Or allow re-calling?
-      // For focus mode, let's prioritize 'pending' and 'no_answer'.
       final pendingFn = allItems
           .where((i) => i.status == 'pending' || i.status == 'no_answer')
           .toList();
 
+      final prefs = await SharedPreferences.getInstance();
+      final savedIndex = prefs.getInt('call_index_${widget.listId}') ?? 0;
+
       if (mounted) {
         setState(() {
           _items = pendingFn;
+          _currentIndex = (savedIndex < _items.length) ? savedIndex : 0;
           _isLoading = false;
         });
       }
@@ -104,14 +107,20 @@ class _CallProcessScreenState extends State<CallProcessScreen> {
       await _repository.updateItemStatus(currentItem.id, status);
 
       if (mounted) {
+        // Save Progress
+        final prefs = await SharedPreferences.getInstance();
+
         // Move to next
         if (_currentIndex < _items.length - 1) {
+          final nextIndex = _currentIndex + 1;
+          await prefs.setInt('call_index_${widget.listId}', nextIndex);
           setState(() {
-            _currentIndex++;
+            _currentIndex = nextIndex;
             _isLoading = false;
           });
         } else {
-          // Done
+          // Done - Reset progress for next time
+          await prefs.remove('call_index_${widget.listId}');
           setState(() => _isLoading = false);
           _showCompletionDialog();
         }
@@ -136,8 +145,8 @@ class _CallProcessScreenState extends State<CallProcessScreen> {
         actions: [
           TextButton(
             onPressed: () {
-              Navigator.pop(context); // Close dialog
-              Navigator.pop(context); // Go back to details
+              Navigator.of(context).pop(); // Close dialog
+              Navigator.of(context).pop(); // Go back to details
             },
             child: const Text('Great!'),
           ),

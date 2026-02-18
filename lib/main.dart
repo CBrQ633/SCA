@@ -13,8 +13,13 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();
-  // Handle background message - you can store it locally or process it
-  debugPrint('Background message received: ${message.messageId}');
+  // Show local notification even if background
+  if (message.notification != null) {
+    await NotificationService().showNotification(
+      title: message.notification?.title ?? 'New Message',
+      body: message.notification?.body ?? '',
+    );
+  }
 }
 
 void main() async {
@@ -24,15 +29,14 @@ void main() async {
   try {
     await SupabaseConfig.initialize();
     try {
-      await Firebase.initializeApp(
-          // options: DefaultFirebaseOptions.currentPlatform, // Uncomment if generated
-          );
+      await Firebase.initializeApp();
       // Register background message handler
       FirebaseMessaging.onBackgroundMessage(
           _firebaseMessagingBackgroundHandler);
       await NotificationService().initialize();
     } catch (e) {
-      debugPrint('Failed to init Firebase: $e');
+      debugPrint('Firebase initialization failed: $e');
+      // Application can still run with Supabase even if notifications fail
     }
   } catch (e) {
     debugPrint('Failed to initialize Supabase: $e');

@@ -136,9 +136,10 @@ class _CallListDetailsScreenState extends State<CallListDetailsScreen> {
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 16),
                         ),
-                        onPressed: () {
-                          // Navigate to Calling Mode
-                          context.push('/calls/${widget.listId}/process');
+                        onPressed: () async {
+                          // Navigate to Calling Mode and refresh on return
+                          await context.push('/calls/${widget.listId}/process');
+                          if (mounted) _loadItems();
                         },
                       ),
                     ),

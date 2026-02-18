@@ -13,7 +13,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return Consumer2<AuthProvider, SettingsProvider>(
       builder: (context, authProvider, settingsProvider, _) {
-        final router = AppRouter.createRouter(authProvider);
+        final router = AppRouter.getRouter(authProvider);
 
         return MaterialApp.router(
           title: 'SCA',

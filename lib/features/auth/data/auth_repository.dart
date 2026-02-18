@@ -1,4 +1,6 @@
+import 'package:flutter/foundation.dart' as foundation;
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -17,12 +19,21 @@ class AuthRepository {
     if (user == null) return null;
 
     try {
-      final response =
-          await _supabase.from('users').select().eq('id', user.id).single();
+      final response = await _supabase
+          .from('users')
+          .select()
+          .eq('id', user.id)
+          .maybeSingle();
+
+      if (response == null) {
+        foundation.debugPrint('Profile row not found for user: ${user.id}');
+        return null;
+      }
 
       return UserModel.fromJson(response);
     } catch (e) {
-      throw Exception('Failed to fetch user profile: $e');
+      foundation.debugPrint('Error fetching profile: $e');
+      return null; // Return null instead of throwing to allow fallback logic in login/refresh
     }
   }
 
@@ -106,33 +117,65 @@ class AuthRepository {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('last_session_id', sessionId);
 
-      // Update session ID and FCM token in database
-      final fcmToken = await FirebaseMessaging.instance.getToken();
-      await _supabase.from('users').update({
-        'last_session_id': sessionId,
-        'fcm_token': fcmToken,
-      }).eq('id', authResponse.user!.id);
+      // Update session ID in database
+      try {
+        await _supabase.from('users').update({
+          'last_session_id': sessionId,
+        }).eq('id', authResponse.user!.id);
+      } catch (e) {
+        foundation.debugPrint('Optional last_session_id update failed: $e');
+        // If users table update fails (e.g. user not in table), login should still succeed
+        // but single session won't work for this user until synced.
+      }
+
+      // Try to update FCM token and other data in background
+      _updateFcmTokenInBackground(authResponse.user!.id);
 
       final profile = await getCurrentUserProfile();
       if (profile == null) {
-        throw Exception('Failed to fetch user profile');
+        // Fallback: Check if user is admin via metadata
+        final metadata = authResponse.user!.appMetadata;
+        final userMetadata = authResponse.user!.userMetadata;
+
+        final role =
+            (metadata['role'] == 'admin' || userMetadata?['role'] == 'admin')
+                ? 'admin'
+                : 'user';
+
+        foundation
+            .debugPrint('Profile missing from DB, using fallback role: $role');
+
+        return UserModel(
+          id: authResponse.user!.id,
+          email: email,
+          fullName: userMetadata?['full_name'],
+          role: role,
+          subscriptionStatus: role == 'admin' ? 'active' : 'pending',
+          createdAt: DateTime.now(),
+          lastSessionId: sessionId,
+        );
       }
 
       return profile;
-    } on AuthException catch (e) {
-      // Specific Supabase Auth errors
-      String message;
-      if (e.message.contains('Invalid login credentials')) {
-        message =
-            'البريد الإلكتروني أو كلمة المرور غير صحيحة (Invalid credentials)';
-      } else if (e.message.contains('Email not confirmed')) {
-        message = 'يرجى تأكيد البريد الإلكتروني أولاً (Email not confirmed)';
-      } else {
-        message = 'خطأ في تسجيل الدخول: ${e.message}';
-      }
-      throw Exception(message);
     } catch (e) {
-      throw Exception('Login error: $e');
+      foundation.debugPrint('Detailed Login error: $e');
+      rethrow;
+    }
+  }
+
+  // Background helper for optional updates
+  Future<void> _updateFcmTokenInBackground(String userId) async {
+    try {
+      if (Firebase.apps.isNotEmpty) {
+        final fcmToken = await FirebaseMessaging.instance.getToken();
+        if (fcmToken != null) {
+          await _supabase.from('users').update({
+            'fcm_token': fcmToken,
+          }).eq('id', userId);
+        }
+      }
+    } catch (e) {
+      foundation.debugPrint('Optional background update skipped: $e');
     }
   }
 

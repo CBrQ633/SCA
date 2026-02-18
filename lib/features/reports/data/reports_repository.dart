@@ -35,17 +35,17 @@ class ReportsRepository {
 
   Future<SubscriptionStats> getSubscriptionStats() async {
     try {
-      final total = await _supabase.from('profiles').count();
+      final total = await _supabase.from('users').count();
       final active = await _supabase
-          .from('profiles')
+          .from('users')
           .count()
           .eq('subscription_status', 'active');
       final pending = await _supabase
-          .from('profiles')
+          .from('users')
           .count()
           .eq('subscription_status', 'pending');
       final expired = await _supabase
-          .from('profiles')
+          .from('users')
           .count()
           .eq('subscription_status', 'expired');
 

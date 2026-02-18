@@ -149,6 +149,13 @@ class _ReportsScreenState extends State<ReportsScreen> {
                         ),
                       ],
                     ),
+                    const SizedBox(height: 16),
+                    _buildStatCard(
+                      'مكالمات بانتظار الاتصال (Pending)',
+                      _callStats?.pending.toString() ?? '0',
+                      Icons.hourglass_empty_rounded,
+                      Colors.orangeAccent,
+                    ),
                     const SizedBox(height: 40),
                   ],
                 ),

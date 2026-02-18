@@ -1,4 +1,5 @@
-import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart' as foundation;
+import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
@@ -31,8 +32,14 @@ class NotificationService {
     await _localNotifications.initialize(settings: initSettings);
 
     // Subscribe to news topic
-    await _firebaseMessaging.subscribeToTopic('news');
-    debugPrint('Subscribed to news topic');
+    try {
+      if (Firebase.apps.isNotEmpty) {
+        await _firebaseMessaging.subscribeToTopic('news');
+        foundation.debugPrint('Subscribed to news topic');
+      }
+    } catch (e) {
+      foundation.debugPrint('Failed to subscribe to news topic: $e');
+    }
 
     // Listen to foreground messages
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
@@ -40,26 +47,34 @@ class NotificationService {
     });
   }
 
+  Future<void> showNotification({
+    required String title,
+    required String body,
+  }) async {
+    await _localNotifications.show(
+      id: DateTime.now().hashCode,
+      title: title,
+      body: body,
+      notificationDetails: const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'high_importance_channel',
+          'High Importance Notifications',
+          channelDescription:
+              'This channel is used for important notifications.',
+          importance: Importance.high,
+          priority: Priority.high,
+        ),
+        iOS: DarwinNotificationDetails(),
+      ),
+    );
+  }
+
   Future<void> _showForegroundNotification(RemoteMessage message) async {
     RemoteNotification? notification = message.notification;
-    AndroidNotification? android = message.notification?.android;
-
-    if (notification != null && android != null) {
-      await _localNotifications.show(
-        id: notification.hashCode,
-        title: notification.title,
-        body: notification.body,
-        notificationDetails: const NotificationDetails(
-          android: AndroidNotificationDetails(
-            'high_importance_channel',
-            'High Importance Notifications',
-            channelDescription:
-                'This channel is used for important notifications.',
-            importance: Importance.high,
-            priority: Priority.high,
-          ),
-          iOS: DarwinNotificationDetails(),
-        ),
+    if (notification != null) {
+      await showNotification(
+        title: notification.title ?? 'SCA Update',
+        body: notification.body ?? '',
       );
     }
   }

@@ -22,11 +22,13 @@ import 'package:smart_call_assistant/core/constants/app_constants.dart';
 
 class AppRouter {
   static final _rootNavigatorKey = GlobalKey<NavigatorState>();
+  static GoRouter? _router;
 
-  static GoRouter createRouter(AuthProvider authProvider) {
-    return GoRouter(
+  static GoRouter getRouter(AuthProvider authProvider) {
+    _router ??= GoRouter(
       navigatorKey: _rootNavigatorKey,
       initialLocation: AppConstants.routeLogin,
+      refreshListenable: authProvider,
       redirect: (context, state) {
         final isAuthenticated = authProvider.isAuthenticated;
         final isAuthRoute = state.matchedLocation == AppConstants.routeLogin ||
@@ -79,7 +81,6 @@ class AppRouter {
 
         return null;
       },
-      refreshListenable: authProvider,
       routes: [
         GoRoute(
           path: AppConstants.routeLogin,
@@ -236,5 +237,6 @@ class AppRouter {
         ),
       ],
     );
+    return _router!;
   }
 }

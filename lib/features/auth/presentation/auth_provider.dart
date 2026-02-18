@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart' as foundation;
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -31,7 +31,7 @@ class AuthProvider with ChangeNotifier, WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      debugPrint('App resumed, refreshing user to check session...');
+      foundation.debugPrint('App resumed, refreshing user to check session...');
       refreshUser();
     }
   }
@@ -40,7 +40,7 @@ class AuthProvider with ChangeNotifier, WidgetsBindingObserver {
     _sessionCheckTimer?.cancel();
     _sessionCheckTimer = Timer.periodic(const Duration(minutes: 1), (timer) {
       if (isAuthenticated) {
-        debugPrint('Periodic session check...');
+        foundation.debugPrint('Periodic session check...');
         refreshUser();
       }
     });
@@ -139,31 +139,30 @@ class AuthProvider with ChangeNotifier, WidgetsBindingObserver {
     try {
       final user = await _authRepository.getCurrentUserProfile();
       if (user != null) {
-        // Check Session ID
-        final prefs = await SharedPreferences.getInstance();
-        final localSessionId = prefs.getString('last_session_id');
+        if (user.lastSessionId != null) {
+          final prefs = await SharedPreferences.getInstance();
+          final localSessionId = prefs.getString('last_session_id');
 
-        if (user.lastSessionId != null &&
-            localSessionId != user.lastSessionId) {
-          // Session mismatch! Logout.
-          debugPrint(
-              'Session mismatch: Local=$localSessionId, Remote=${user.lastSessionId}');
-          _errorMessage =
-              'تم تسجيل الدخول من جهاز آخر. (Logged in from another device)';
-          await logout();
-          return;
+          if (localSessionId != null && localSessionId != user.lastSessionId) {
+            // Session mismatch! Logout.
+            foundation.debugPrint(
+                'Session mismatch detected: Local=$localSessionId, Remote=${user.lastSessionId}');
+            _errorMessage =
+                'تم تسجيل الدخول من جهاز آخر. (Logged in from another device)';
+            notifyListeners();
+            await logout();
+            return;
+          }
         }
 
         _currentUser = user;
-        debugPrint('User profile updated: ${_currentUser?.email}');
+        foundation.debugPrint('User profile updated: ${_currentUser?.email}');
         notifyListeners();
       } else {
-        // If profile fetch fails but we have session, it might be RLS issue or network.
-        // We don't sign them out automatically to avoid annoyance, but UI might show "Guest" or loading.
-        debugPrint('User profile fetch returned null.');
+        foundation.debugPrint('User profile fetch returned null.');
       }
     } catch (e) {
-      debugPrint('Failed to refresh user profile: $e');
+      foundation.debugPrint('Failed to refresh user profile: $e');
     }
   }
 
