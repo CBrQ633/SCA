@@ -60,8 +60,8 @@ class AuthRepository {
         id: authResponse.user!.id,
         email: email,
         fullName: fullName,
-        role: 'user',
-        subscriptionStatus: 'pending',
+        role: 'sales_user',
+        subscriptionStatus: 'active',
         createdAt: DateTime.now(),
       );
     } catch (e) {
@@ -87,18 +87,17 @@ class AuthRepository {
   bool get hasSession => currentUser != null;
   Stream<AuthState> get authStateChanges => _supabase.auth.onAuthStateChange;
 
-  // Admin Methods
+  // --- ADMIN METHODS ---
+
   Future<List<UserModel>> getAllUsers() async {
-    final response = await _supabase.from('profiles').select().order('created_at', ascending: false);
-    return (response as List).map((json) => UserModel.fromJson(json)).toList();
+    try {
+      final response = await _supabase.from('profiles').select().order('created_at', ascending: false);
+      return (response as List).map((json) => UserModel.fromJson(json)).toList();
+    } catch (e) {
+      throw Exception('Failed to fetch users: $e');
+    }
   }
 
-  Future<int> getUsersCount() async {
-    final response = await _supabase.from('profiles').select('id');
-    return (response as List).length;
-  }
-
-  // Added missing methods for User Management
   Future<void> updateUser(String userId, Map<String, dynamic> data) async {
     try {
       await _supabase.from('profiles').update(data).eq('id', userId);
@@ -109,11 +108,20 @@ class AuthRepository {
 
   Future<void> deleteUser(String userId) async {
     try {
-      // In Supabase, usually you'd call a function to delete from auth.users too
-      // or just delete from public.profiles if cascading is not setup for auth.
+      // Deleting from profiles will cascade if configured,
+      // but ideally you delete from auth.users via a service role or edge function.
       await _supabase.from('profiles').delete().eq('id', userId);
     } catch (e) {
       throw Exception('Failed to delete user: $e');
+    }
+  }
+
+  Future<int> getUsersCount() async {
+    try {
+      final response = await _supabase.from('profiles').select('id');
+      return (response as List).length;
+    } catch (e) {
+      return 0;
     }
   }
 }

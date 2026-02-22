@@ -42,16 +42,17 @@ class NotificationService {
       requestSoundPermission: true,
     );
 
-    const InitializationSettings initSettings = InitializationSettings(
+    const initSettings = InitializationSettings(
       android: androidSettings,
       iOS: iosSettings,
     );
 
-    // Using the most basic initialization to ensure compatibility
     await _localNotifications.initialize(
       initSettings,
       onDidReceiveNotificationResponse: (NotificationResponse details) {
-        foundation.debugPrint('Notification clicked: ${details.payload}');
+        if (details.payload != null) {
+          foundation.debugPrint('Notification payload: ${details.payload}');
+        }
       },
     );
 
@@ -61,7 +62,7 @@ class NotificationService {
         await _firebaseMessaging.subscribeToTopic('news');
       }
     } catch (e) {
-      foundation.debugPrint('Topic error: $e');
+      foundation.debugPrint('Topic subscription failed: $e');
     }
 
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
@@ -99,12 +100,11 @@ class NotificationService {
   }
 
   Future<void> _showForegroundNotification(RemoteMessage message) async {
-    RemoteNotification? notification = message.notification;
-    if (notification != null) {
+    if (message.notification != null) {
       await showNotification(
-        id: notification.hashCode,
-        title: notification.title ?? 'SCA Update',
-        body: notification.body ?? '',
+        id: message.hashCode,
+        title: message.notification?.title ?? 'SCA Update',
+        body: message.notification?.body ?? '',
         payload: message.data.toString(),
       );
     }

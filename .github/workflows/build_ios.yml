@@ -16,26 +16,35 @@ jobs:
           channel: "stable"
           cache: true
 
+      - name: Install CocoaPods
+        run: |
+          sudo gem install cocoapods
+          pod --version
+
       - name: Clean Project
         run: flutter clean
 
       - name: Get Dependencies
         run: flutter pub get
 
+      - name: Pre-build iOS Config
+        run: |
+          cd ios
+          rm -f Flutter/Generated.xcconfig
+          rm -f Flutter/flutter_export_environment.sh
+          cd ..
+
       - name: Build iOS (No Codesign)
         run: flutter build ios --release --no-codesign
 
-      - name: Create Payload directory
-        run: mkdir Payload
+      - name: Create IPA (Payload Method)
+        run: |
+          mkdir Payload
+          cp -r build/ios/iphoneos/Runner.app Payload/
+          zip -r Runner.ipa Payload
 
-      - name: Move App to Payload
-        run: mv build/ios/iphoneos/Runner.app Payload/
-
-      - name: Zip Payload
-        run: zip -r Runner.ipa Payload
-
-      - name: Upload IPA
+      - name: Upload IPA Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: app-release
+          name: sca-ios-release
           path: Runner.ipa
