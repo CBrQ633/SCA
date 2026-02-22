@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:smart_call_assistant/features/calls/data/calls_repository.dart';
 import 'package:smart_call_assistant/features/calls/data/models/call_list_model.dart';
+import 'package:smart_call_assistant/core/components/app_logo.dart';
 
 class CallProcessScreen extends StatefulWidget {
   final String listId;
@@ -52,10 +53,7 @@ class _CallProcessScreenState extends State<CallProcessScreen> {
   }
 
   Future<void> _makeCall(String phoneNumber) async {
-    final Uri launchUri = Uri(
-      scheme: 'tel',
-      path: phoneNumber,
-    );
+    final Uri launchUri = Uri(scheme: 'tel', path: phoneNumber);
     if (await canLaunchUrl(launchUri)) {
       await launchUrl(launchUri);
     } else {
@@ -67,22 +65,15 @@ class _CallProcessScreenState extends State<CallProcessScreen> {
   }
 
   Future<void> _openWhatsApp(String phoneNumber) async {
-    // 1. Clean number
     String cleanPhone = phoneNumber.replaceAll(RegExp(r'[^0-9+]'), '');
-
-    // 2. Handle Egyptian format (01xxx -> 201xxx)
     if (cleanPhone.startsWith('0') && cleanPhone.length == 11) {
       cleanPhone = '20${cleanPhone.substring(1)}';
     } else if (cleanPhone.startsWith('+')) {
       cleanPhone = cleanPhone.substring(1);
     }
 
-    // 3. Prepare message
-    const String message = 'السلام عليكم، بخصوص الاتصال من SCA...';
-    final String encodedMsg = Uri.encodeComponent(message);
-
-    final Uri launchUri =
-        Uri.parse('https://wa.me/$cleanPhone?text=$encodedMsg');
+    // Direct link to open chat without prefilled message
+    final Uri launchUri = Uri.parse('https://wa.me/$cleanPhone');
 
     if (await canLaunchUrl(launchUri)) {
       await launchUrl(launchUri, mode: LaunchMode.externalApplication);
@@ -97,20 +88,13 @@ class _CallProcessScreenState extends State<CallProcessScreen> {
 
   Future<void> _updateStatus(String status) async {
     if (_items.isEmpty) return;
-
     final currentItem = _items[_currentIndex];
-
-    // Optimistic Update
     setState(() => _isLoading = true);
 
     try {
       await _repository.updateItemStatus(currentItem.id, status);
-
       if (mounted) {
-        // Save Progress
         final prefs = await SharedPreferences.getInstance();
-
-        // Move to next
         if (_currentIndex < _items.length - 1) {
           final nextIndex = _currentIndex + 1;
           await prefs.setInt('call_index_${widget.listId}', nextIndex);
@@ -119,7 +103,6 @@ class _CallProcessScreenState extends State<CallProcessScreen> {
             _isLoading = false;
           });
         } else {
-          // Done - Reset progress for next time
           await prefs.remove('call_index_${widget.listId}');
           setState(() => _isLoading = false);
           _showCompletionDialog();
@@ -128,8 +111,7 @@ class _CallProcessScreenState extends State<CallProcessScreen> {
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Error updating status: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
       }
     }
   }
@@ -139,16 +121,15 @@ class _CallProcessScreenState extends State<CallProcessScreen> {
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
-        title: const Text('List Completed!'),
-        content: const Text(
-            'You have gone through all pending contacts in this list.'),
+        title: const Text('List Completed! / اكتملت القائمة'),
+        content: const Text('You have gone through all pending contacts.\nلقد انتهيت من جميع جهات الاتصال المعلقة.'),
         actions: [
-          TextButton(
+          ElevatedButton(
             onPressed: () {
-              Navigator.of(context).pop(); // Close dialog
-              Navigator.of(context).pop(); // Go back to details
+              Navigator.of(context).pop();
+              Navigator.of(context).pop();
             },
-            child: const Text('Great!'),
+            child: const Text('Great! / رائع'),
           ),
         ],
       ),
@@ -157,26 +138,20 @@ class _CallProcessScreenState extends State<CallProcessScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    }
+    if (_isLoading) return const Scaffold(body: Center(child: CircularProgressIndicator()));
     if (_items.isEmpty) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Call Session')),
+        appBar: AppBar(title: const Text('Session Finished')),
         body: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.check_circle, size: 64, color: Colors.green),
-              const SizedBox(height: 16),
-              const Text('All caught up!', style: TextStyle(fontSize: 20)),
-              const SizedBox(height: 8),
+              const AppLogo(size: 80, showText: false),
+              const SizedBox(height: 24),
+              const Text('All caught up!', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
               const Text('No pending calls in this list.'),
               const SizedBox(height: 24),
-              ElevatedButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Go Back'),
-              ),
+              ElevatedButton(onPressed: () => Navigator.pop(context), child: const Text('Go Back')),
             ],
           ),
         ),
@@ -184,178 +159,99 @@ class _CallProcessScreenState extends State<CallProcessScreen> {
     }
 
     final currentItem = _items[_currentIndex];
+    final theme = Theme.of(context);
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Call ${_currentIndex + 1}/${_items.length}'),
+        title: Text('Call ${_currentIndex + 1} / ${_items.length}'),
+        actions: const [Padding(padding: EdgeInsets.all(8.0), child: AppLogo(size: 35, showText: false))],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(4),
           child: LinearProgressIndicator(
             value: (_currentIndex + 1) / _items.length,
-            backgroundColor: Colors.transparent,
-            valueColor: AlwaysStoppedAnimation<Color>(
-                Theme.of(context).colorScheme.primary),
+            backgroundColor: theme.colorScheme.surface,
+            valueColor: AlwaysStoppedAnimation<Color>(theme.colorScheme.secondary),
           ),
         ),
       ),
       body: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32),
+        padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 24),
         child: Column(
           children: [
-            // Contact Card with Animation
             ZoomIn(
-              key:
-                  ValueKey('contact_card_$_currentIndex'), // Triggers on change
-              duration: const Duration(milliseconds: 400),
+              key: ValueKey('card_$_currentIndex'),
+              duration: const Duration(milliseconds: 500),
               child: Container(
                 width: double.infinity,
-                padding: const EdgeInsets.all(32),
+                padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
-                  color: Theme.of(context).cardTheme.color,
-                  borderRadius: BorderRadius.circular(32),
-                  border: Border.all(
-                    color: Theme.of(context).brightness == Brightness.dark
-                        ? Colors.white12
-                        : Colors.black.withValues(alpha: 0.05),
-                    width: 1.5,
-                  ),
+                  color: theme.cardTheme.color,
+                  borderRadius: BorderRadius.circular(24),
                   boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.05),
-                      blurRadius: 30,
-                      offset: const Offset(0, 15),
-                    ),
+                    BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 20, offset: const Offset(0, 10)),
                   ],
                 ),
                 child: Column(
                   children: [
-                    FadeInDown(
-                      delay: const Duration(milliseconds: 200),
-                      child: CircleAvatar(
-                        radius: 50,
-                        backgroundColor: Theme.of(context).colorScheme.primary,
-                        child: Text(
-                          currentItem.name != null &&
-                                  currentItem.name!.isNotEmpty
-                              ? currentItem.name![0]
-                              : '?',
-                          style: TextStyle(
-                            fontSize: 40,
-                            color: Theme.of(context).colorScheme.onPrimary,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                    CircleAvatar(
+                      radius: 45,
+                      backgroundColor: theme.colorScheme.primary,
+                      child: Text(
+                        currentItem.name?.isNotEmpty == true ? currentItem.name![0] : '?',
+                        style: const TextStyle(fontSize: 32, color: Colors.white, fontWeight: FontWeight.bold),
                       ),
                     ),
-                    const SizedBox(height: 24),
-                    FadeInUp(
-                      delay: const Duration(milliseconds: 300),
-                      child: Text(
-                        currentItem.name ?? 'Unknown',
-                        style: const TextStyle(
-                          fontSize: 28,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: -0.5,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
+                    const SizedBox(height: 20),
+                    Text(
+                      currentItem.name ?? 'Unknown Customer',
+                      style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                      textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 8),
-                    FadeInUp(
-                      delay: const Duration(milliseconds: 400),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: Theme.of(context)
-                              .colorScheme
-                              .primary
-                              .withValues(alpha: 0.05),
-                          borderRadius: BorderRadius.circular(30),
-                        ),
-                        child: Text(
-                          currentItem.phone,
-                          style: TextStyle(
-                            fontSize: 18,
-                            color: Theme.of(context).colorScheme.primary,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.primary.withOpacity(0.08),
+                        borderRadius: BorderRadius.circular(20),
                       ),
+                      child: Text(currentItem.phone, style: TextStyle(color: theme.colorScheme.primary, fontWeight: FontWeight.w600)),
                     ),
                   ],
                 ),
               ),
             ),
-
             const Spacer(),
-
-            // Action Buttons
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                _buildActionButton(
-                  icon: Icons.call_rounded,
-                  label: 'Call',
-                  color: Colors.greenAccent[700]!,
-                  onTap: () => _makeCall(currentItem.phone),
-                ),
-                _buildActionButton(
-                  icon: Icons.chat_bubble_rounded,
-                  label: 'WhatsApp',
-                  color: const Color(0xFF25D366), // WhatsApp color
-                  onTap: () => _openWhatsApp(currentItem.phone),
-                ),
+                _buildActionButton(icon: Icons.call, label: 'Call', color: Colors.blue[700]!, onTap: () => _makeCall(currentItem.phone)),
+                _buildActionButton(icon: Icons.chat, label: 'WhatsApp', color: const Color(0xFF128C7E), onTap: () => _openWhatsApp(currentItem.phone)),
               ],
             ),
-            const SizedBox(height: 24),
-
-            // Outcome Buttons
-            const Text(
-              'LOG OUTCOME',
-              style: TextStyle(
-                fontWeight: FontWeight.w800,
-                fontSize: 12,
-                color: Colors.grey,
-                letterSpacing: 1.2,
-              ),
-            ),
+            const SizedBox(height: 32),
+            const Text('RESULT / النتيجة', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.grey, letterSpacing: 1.5)),
             const SizedBox(height: 16),
             Row(
               children: [
                 Expanded(
                   child: ElevatedButton(
                     onPressed: () => _updateStatus('called'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.indigo[50],
-                      foregroundColor: Colors.indigo[900],
-                      elevation: 0,
-                    ),
-                    child: const Text('Answered'),
+                    style: ElevatedButton.styleFrom(backgroundColor: theme.colorScheme.secondary, foregroundColor: Colors.white),
+                    child: const Text('Answered / تم الرد'),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: ElevatedButton(
+                  child: OutlinedButton(
                     onPressed: () => _updateStatus('no_answer'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.red[50],
-                      foregroundColor: Colors.red[900],
-                      elevation: 0,
-                    ),
-                    child: const Text('No Answer'),
+                    child: const Text('No Answer / لم يرد'),
                   ),
                 ),
               ],
             ),
             TextButton(
-              onPressed: () {
-                // Skip
-                if (_currentIndex < _items.length - 1) {
-                  setState(() => _currentIndex++);
-                }
-              },
-              child: const Text('Skip for now'),
+              onPressed: () => setState(() => _currentIndex < _items.length - 1 ? _currentIndex++ : _showCompletionDialog()),
+              child: const Text('Skip / تخطي'),
             ),
           ],
         ),
@@ -363,28 +259,20 @@ class _CallProcessScreenState extends State<CallProcessScreen> {
     );
   }
 
-  Widget _buildActionButton(
-      {required IconData icon,
-      required String label,
-      required Color color,
-      required VoidCallback onTap}) {
+  Widget _buildActionButton({required IconData icon, required String label, required Color color, required VoidCallback onTap}) {
     return Column(
       children: [
         InkWell(
           onTap: onTap,
           borderRadius: BorderRadius.circular(50),
           child: Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.1),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, color: color, size: 32),
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(color: color.withOpacity(0.12), shape: BoxShape.circle),
+            child: Icon(icon, color: color, size: 30),
           ),
         ),
         const SizedBox(height: 8),
-        Text(label,
-            style: TextStyle(color: color, fontWeight: FontWeight.bold)),
+        Text(label, style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 13)),
       ],
     );
   }

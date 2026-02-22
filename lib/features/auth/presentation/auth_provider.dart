@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart' as foundation;
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:uuid/uuid.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../data/auth_repository.dart';
 import '../data/user_model.dart';
@@ -17,8 +18,7 @@ class AuthProvider with ChangeNotifier, WidgetsBindingObserver {
   UserModel? get currentUser => _currentUser;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
-  bool get isAuthenticated =>
-      _authRepository.hasSession; // Rely on session for initial routing
+  bool get isAuthenticated => _authRepository.hasSession;
   bool get isAdmin => _currentUser?.isAdmin ?? false;
 
   AuthProvider() {
@@ -31,16 +31,14 @@ class AuthProvider with ChangeNotifier, WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      foundation.debugPrint('App resumed, refreshing user to check session...');
       refreshUser();
     }
   }
 
   void _startSessionCheckTimer() {
     _sessionCheckTimer?.cancel();
-    _sessionCheckTimer = Timer.periodic(const Duration(minutes: 1), (timer) {
+    _sessionCheckTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
       if (isAuthenticated) {
-        foundation.debugPrint('Periodic session check...');
         refreshUser();
       }
     });
@@ -54,8 +52,6 @@ class AuthProvider with ChangeNotifier, WidgetsBindingObserver {
   }
 
   Future<void> _initializeAuth() async {
-    // If we have a session, we consider them authenticated for routing purposes
-    // We try to fetch the profile in the background
     if (_authRepository.hasSession) {
       await refreshUser();
     }
@@ -63,16 +59,26 @@ class AuthProvider with ChangeNotifier, WidgetsBindingObserver {
 
   void _listenToAuthStateChanges() {
     _authRepository.authStateChanges.listen((data) {
-      final AuthChangeEvent event = data.event;
-      if (event == AuthChangeEvent.signedIn) {
+      if (data.event == AuthChangeEvent.signedIn) {
         refreshUser();
-      } else if (event == AuthChangeEvent.signedOut) {
+      } else if (data.event == AuthChangeEvent.signedOut) {
         _currentUser = null;
         notifyListeners();
       }
     });
   }
 
+  Future<String> _getOrCreateDeviceId() async {
+    final prefs = await SharedPreferences.getInstance();
+    String? deviceId = prefs.getString('sca_device_id');
+    if (deviceId == null) {
+      deviceId = const Uuid().v4();
+      await prefs.setString('sca_device_id', deviceId);
+    }
+    return deviceId;
+  }
+
+  // Added missing register method
   Future<bool> register({
     required String email,
     required String password,
@@ -105,11 +111,12 @@ class AuthProvider with ChangeNotifier, WidgetsBindingObserver {
     notifyListeners();
 
     try {
-      _currentUser = await _authRepository.login(
-        email: email,
-        password: password,
-      );
-      await refreshUser(); // Fetch profile immediately after login
+      final user = await _authRepository.login(email: email, password: password);
+      final deviceId = await _getOrCreateDeviceId();
+
+      await _authRepository.updateUserDeviceId(user.id, deviceId);
+
+      await refreshUser();
       _isLoading = false;
       notifyListeners();
       return true;
@@ -121,6 +128,28 @@ class AuthProvider with ChangeNotifier, WidgetsBindingObserver {
     }
   }
 
+  Future<void> refreshUser() async {
+    try {
+      final user = await _authRepository.getCurrentUserProfile();
+      if (user != null) {
+        final localDeviceId = await _getOrCreateDeviceId();
+
+        if (user.currentDeviceId != null && user.currentDeviceId != localDeviceId) {
+          foundation.debugPrint('Security: Unauthorized device detected. Logging out.');
+          _errorMessage = 'تم تسجيل الدخول من جهاز آخر. (Logged in from another device)';
+          notifyListeners();
+          await logout();
+          return;
+        }
+
+        _currentUser = user;
+        notifyListeners();
+      }
+    } catch (e) {
+      foundation.debugPrint('Session Refresh Error: $e');
+    }
+  }
+
   Future<void> logout() async {
     try {
       await _authRepository.logout();
@@ -129,40 +158,6 @@ class AuthProvider with ChangeNotifier, WidgetsBindingObserver {
     } catch (e) {
       _errorMessage = e.toString();
       notifyListeners();
-    }
-  }
-
-  Future<void> refreshUser() async {
-    // Avoid multiple simultaneous refreshes if already loading?
-    // For now, simple implementation is fine.
-
-    try {
-      final user = await _authRepository.getCurrentUserProfile();
-      if (user != null) {
-        if (user.lastSessionId != null) {
-          final prefs = await SharedPreferences.getInstance();
-          final localSessionId = prefs.getString('last_session_id');
-
-          if (localSessionId != null && localSessionId != user.lastSessionId) {
-            // Session mismatch! Logout.
-            foundation.debugPrint(
-                'Session mismatch detected: Local=$localSessionId, Remote=${user.lastSessionId}');
-            _errorMessage =
-                'تم تسجيل الدخول من جهاز آخر. (Logged in from another device)';
-            notifyListeners();
-            await logout();
-            return;
-          }
-        }
-
-        _currentUser = user;
-        foundation.debugPrint('User profile updated: ${_currentUser?.email}');
-        notifyListeners();
-      } else {
-        foundation.debugPrint('User profile fetch returned null.');
-      }
-    } catch (e) {
-      foundation.debugPrint('Failed to refresh user profile: $e');
     }
   }
 

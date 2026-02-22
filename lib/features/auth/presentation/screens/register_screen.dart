@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
+import 'package:animate_do/animate_do.dart';
 import 'package:smart_call_assistant/features/auth/presentation/auth_provider.dart';
 import 'package:smart_call_assistant/core/constants/app_constants.dart';
 import 'package:smart_call_assistant/l10n/app_localizations.dart';
-import 'package:smart_call_assistant/shared/widgets/sca_logo.dart';
+import 'package:smart_call_assistant/core/components/app_logo.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -43,197 +44,177 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     if (mounted) {
       if (success) {
-        showDialog(
-          context: context,
-          barrierDismissible: false,
-          builder: (ctx) => AlertDialog(
-            title: const Text('تم التسجيل بنجاح'),
-            content: const Text(
-                'لقد أرسلنا رابط تأكيد إلى بريدك الإلكتروني.\n\nمن فضلك راجع صندوق الوارد (Inbox) وأيضاً الرسائل غير المرغوب فيها (Spam/Junk) للتأكد من وصول الرسالة.\n\nاضغط على الرابط في الرسالة لتفعيل حسابك قبل تسجيل الدخول.'),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.pop(ctx);
-                  context.go(AppConstants.routeLogin);
-                },
-                child: const Text('حسناً، فهمت'),
-              ),
-            ],
-          ),
-        );
+        _showSuccessDialog();
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(authProvider.errorMessage ?? 'Registration failed'),
-            backgroundColor: Colors.red,
+            content: Text(authProvider.errorMessage ?? 'Registration failed / فشل التسجيل'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+            behavior: SnackBarBehavior.floating,
           ),
         );
       }
     }
   }
 
+  void _showSuccessDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Icon(Icons.mark_email_read_rounded, color: Theme.of(context).colorScheme.secondary),
+            const SizedBox(width: 10),
+            const Text('Verify Email / تفعيل الحساب'),
+          ],
+        ),
+        content: const Text(
+            'We have sent a verification link to your email. Please check your Inbox & Spam folders.\n\nلقد أرسلنا رابط تفعيل لبريدك الإلكتروني. يرجى مراجعة البريد الوارد والرسائل المزعجة.'),
+        actions: [
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              context.go(AppConstants.routeLogin);
+            },
+            child: const Text('OK / حسناً'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    final theme = Theme.of(context);
 
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.register)),
+      backgroundColor: theme.scaffoldBackgroundColor,
+      appBar: AppBar(
+        title: Text(l10n.register),
+        centerTitle: true,
+        backgroundColor: Colors.transparent,
+      ),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24.0),
+            padding: const EdgeInsets.symmetric(horizontal: 32.0, vertical: 20),
             child: Form(
               key: _formKey,
               child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Premium Logo
-                  const ScaLogo(size: 80, showText: false),
-                  const SizedBox(height: 16),
+                  FadeInDown(child: const AppLogo(size: 70, showText: false)),
+                  const SizedBox(height: 24),
 
-                  Text(
-                    l10n.register,
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.displaySmall,
+                  FadeInLeft(
+                    child: Text(
+                      'Create Account / حساب جديد',
+                      style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold, color: theme.colorScheme.primary),
+                      textAlign: TextAlign.center,
+                    ),
                   ),
                   const SizedBox(height: 32),
 
-                  // Full Name Field
-                  TextFormField(
-                    controller: _fullNameController,
-                    decoration: InputDecoration(
-                      labelText: l10n.fullName,
-                      prefixIcon: const Icon(Icons.person_outlined),
-                    ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter your full name';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Email Field
-                  TextFormField(
-                    controller: _emailController,
-                    keyboardType: TextInputType.emailAddress,
-                    decoration: InputDecoration(
-                      labelText: l10n.email,
-                      prefixIcon: const Icon(Icons.email_outlined),
-                    ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter your email';
-                      }
-                      if (!value.contains('@')) {
-                        return 'Please enter a valid email';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Password Field
-                  TextFormField(
-                    controller: _passwordController,
-                    obscureText: _obscurePassword,
-                    decoration: InputDecoration(
-                      labelText: l10n.password,
-                      prefixIcon: const Icon(Icons.lock_outlined),
-                      suffixIcon: IconButton(
-                        icon: Icon(
-                          _obscurePassword
-                              ? Icons.visibility_outlined
-                              : Icons.visibility_off_outlined,
-                        ),
-                        onPressed: () {
-                          setState(() {
-                            _obscurePassword = !_obscurePassword;
-                          });
-                        },
+                  // Name Input
+                  FadeInUp(
+                    delay: const Duration(milliseconds: 200),
+                    child: TextFormField(
+                      controller: _fullNameController,
+                      decoration: InputDecoration(
+                        labelText: l10n.fullName,
+                        prefixIcon: Icon(Icons.person_outline, color: theme.colorScheme.primary),
                       ),
+                      validator: (v) => v?.isEmpty == true ? 'Name is required' : null,
                     ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter a password';
-                      }
-                      if (value.length < 6) {
-                        return 'Password must be at least 6 characters';
-                      }
-                      return null;
-                    },
                   ),
                   const SizedBox(height: 16),
 
-                  // Confirm Password Field
-                  TextFormField(
-                    controller: _confirmPasswordController,
-                    obscureText: _obscureConfirmPassword,
-                    decoration: InputDecoration(
-                      labelText: l10n.confirmPassword,
-                      prefixIcon: const Icon(Icons.lock_outlined),
-                      suffixIcon: IconButton(
-                        icon: Icon(
-                          _obscureConfirmPassword
-                              ? Icons.visibility_outlined
-                              : Icons.visibility_off_outlined,
-                        ),
-                        onPressed: () {
-                          setState(() {
-                            _obscureConfirmPassword = !_obscureConfirmPassword;
-                          });
-                        },
+                  // Email Input
+                  FadeInUp(
+                    delay: const Duration(milliseconds: 400),
+                    child: TextFormField(
+                      controller: _emailController,
+                      keyboardType: TextInputType.emailAddress,
+                      decoration: InputDecoration(
+                        labelText: l10n.email,
+                        prefixIcon: Icon(Icons.email_outlined, color: theme.colorScheme.primary),
                       ),
+                      validator: (v) => (v == null || !v.contains('@')) ? 'Valid email required' : null,
                     ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please confirm your password';
-                      }
-                      if (value != _passwordController.text) {
-                        return 'Passwords do not match';
-                      }
-                      return null;
-                    },
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Password Input
+                  FadeInUp(
+                    delay: const Duration(milliseconds: 600),
+                    child: TextFormField(
+                      controller: _passwordController,
+                      obscureText: _obscurePassword,
+                      decoration: InputDecoration(
+                        labelText: l10n.password,
+                        prefixIcon: Icon(Icons.lock_outlined, color: theme.colorScheme.primary),
+                        suffixIcon: IconButton(
+                          icon: Icon(_obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined, size: 20),
+                          onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                        ),
+                      ),
+                      validator: (v) => (v != null && v.length < 6) ? 'At least 6 characters' : null,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Confirm Password
+                  FadeInUp(
+                    delay: const Duration(milliseconds: 800),
+                    child: TextFormField(
+                      controller: _confirmPasswordController,
+                      obscureText: _obscureConfirmPassword,
+                      decoration: InputDecoration(
+                        labelText: l10n.confirmPassword,
+                        prefixIcon: Icon(Icons.lock_reset_outlined, color: theme.colorScheme.primary),
+                        suffixIcon: IconButton(
+                          icon: Icon(_obscureConfirmPassword ? Icons.visibility_outlined : Icons.visibility_off_outlined, size: 20),
+                          onPressed: () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
+                        ),
+                      ),
+                      validator: (v) => v != _passwordController.text ? 'Passwords match required' : null,
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+
+                  // Action Button
+                  FadeInUp(
+                    delay: const Duration(milliseconds: 1000),
+                    child: Consumer<AuthProvider>(
+                      builder: (context, authProvider, _) {
+                        return ElevatedButton(
+                          onPressed: authProvider.isLoading ? null : _handleRegister,
+                          style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 18)),
+                          child: authProvider.isLoading
+                              ? const SizedBox(height: 22, width: 22, child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white))
+                              : Text(l10n.register.toUpperCase(), style: const TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.2)),
+                        );
+                      },
+                    ),
                   ),
                   const SizedBox(height: 24),
 
-                  // Register Button
-                  Consumer<AuthProvider>(
-                    builder: (context, authProvider, _) {
-                      return ElevatedButton(
-                        onPressed:
-                            authProvider.isLoading ? null : _handleRegister,
-                        child: authProvider.isLoading
-                            ? const SizedBox(
-                                height: 20,
-                                width: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  valueColor: AlwaysStoppedAnimation<Color>(
-                                    Colors.white,
-                                  ),
-                                ),
-                              )
-                            : Text(l10n.register),
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Login Link
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(l10n.alreadyHaveAccount),
-                      TextButton(
-                        onPressed: () {
-                          context.go(AppConstants.routeLogin);
-                        },
-                        child: Text(l10n.login),
-                      ),
-                    ],
+                  // Footer
+                  FadeIn(
+                    delay: const Duration(milliseconds: 1200),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(l10n.alreadyHaveAccount),
+                        TextButton(
+                          onPressed: () => context.go(AppConstants.routeLogin),
+                          child: Text(l10n.login, style: TextStyle(color: theme.colorScheme.secondary, fontWeight: FontWeight.bold)),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),

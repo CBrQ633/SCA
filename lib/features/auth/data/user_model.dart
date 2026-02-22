@@ -2,12 +2,12 @@ class UserModel {
   final String id;
   final String email;
   final String? fullName;
-  final String role; // 'user' or 'admin'
-  final String subscriptionStatus; // 'active', 'expired', 'pending'
+  final String role; // 'sales_user' or 'admin'
+  final String subscriptionStatus;
   final DateTime? subscriptionStart;
   final DateTime? subscriptionEnd;
   final DateTime createdAt;
-  final String? lastSessionId;
+  final String? currentDeviceId;
 
   UserModel({
     required this.id,
@@ -18,7 +18,7 @@ class UserModel {
     this.subscriptionStart,
     this.subscriptionEnd,
     required this.createdAt,
-    this.lastSessionId,
+    this.currentDeviceId,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
@@ -28,13 +28,9 @@ class UserModel {
       fullName: json['full_name'] as String?,
       role: json['role'] as String,
       subscriptionStatus: json['subscription_status'] as String,
-      subscriptionStart: json['subscription_start'] != null
-          ? DateTime.parse(json['subscription_start'] as String)
-          : null,
-      subscriptionEnd: json['subscription_end'] != null
-          ? DateTime.parse(json['subscription_end'] as String)
-          : null,
-      lastSessionId: json['last_session_id'] as String?,
+      subscriptionStart: json['subscription_start'] != null ? DateTime.parse(json['subscription_start'] as String) : null,
+      subscriptionEnd: json['subscription_end'] != null ? DateTime.parse(json['subscription_end'] as String) : null,
+      currentDeviceId: json['current_device_id'] as String?,
       createdAt: DateTime.parse(json['created_at'] as String),
     );
   }
@@ -49,12 +45,10 @@ class UserModel {
       'subscription_start': subscriptionStart?.toIso8601String(),
       'subscription_end': subscriptionEnd?.toIso8601String(),
       'created_at': createdAt.toIso8601String(),
-      'last_session_id': lastSessionId,
+      'current_device_id': currentDeviceId,
     };
   }
 
   bool get isAdmin => role == 'admin';
   bool get isSubscriptionActive => subscriptionStatus == 'active';
-  bool get isSubscriptionExpired => subscriptionStatus == 'expired';
-  bool get isSubscriptionPending => subscriptionStatus == 'pending';
 }
