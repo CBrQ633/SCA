@@ -8,7 +8,6 @@ class NotificationService {
   factory NotificationService() => _instance;
   NotificationService._internal();
 
-  final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
   final FlutterLocalNotificationsPlugin _localNotifications =
       FlutterLocalNotificationsPlugin();
 
@@ -16,25 +15,27 @@ class NotificationService {
     'high_importance_channel',
     'High Importance Notifications',
     description: 'This channel is used for important notifications.',
-    importance: Importance.high,
+    importance: Importance.max,
     playSound: true,
     enableVibration: true,
   );
 
   Future<void> initialize() async {
-    await _firebaseMessaging.requestPermission(
+    // 1. Request Permission
+    await FirebaseMessaging.instance.requestPermission(
       alert: true,
       badge: true,
       sound: true,
     );
 
+    // 2. Setup Android Channel
     final androidPlugin = _localNotifications.resolvePlatformSpecificImplementation<
         AndroidFlutterLocalNotificationsPlugin>();
-
     if (androidPlugin != null) {
       await androidPlugin.createNotificationChannel(_channel);
     }
 
+    // 3. Init Settings
     const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
     const iosSettings = DarwinInitializationSettings(
       requestAlertPermission: true,
@@ -47,24 +48,23 @@ class NotificationService {
       iOS: iosSettings,
     );
 
+    // FIX: Using positional for compatibility with most common v20 signatures
     await _localNotifications.initialize(
       initSettings,
       onDidReceiveNotificationResponse: (NotificationResponse details) {
-        if (details.payload != null) {
-          foundation.debugPrint('Notification payload: ${details.payload}');
-        }
+        foundation.debugPrint('Notification clicked: ${details.payload}');
       },
     );
 
+    // 4. Topics
     try {
-      if (Firebase.apps.isNotEmpty) {
-        await _firebaseMessaging.subscribeToTopic('all_users');
-        await _firebaseMessaging.subscribeToTopic('news');
-      }
+      await FirebaseMessaging.instance.subscribeToTopic('all_users');
+      await FirebaseMessaging.instance.subscribeToTopic('news');
     } catch (e) {
-      foundation.debugPrint('Topic subscription failed: $e');
+      foundation.debugPrint('Topic subscription error: $e');
     }
 
+    // 5. Foreground Listener
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
       _showForegroundNotification(message);
     });
@@ -76,7 +76,7 @@ class NotificationService {
     required String body,
     String? payload,
   }) async {
-    const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+    const androidDetails = AndroidNotificationDetails(
       'high_importance_channel',
       'High Importance Notifications',
       channelDescription: 'This channel is used for important notifications.',
@@ -85,32 +85,34 @@ class NotificationService {
       showWhen: true,
     );
 
-    const NotificationDetails platformDetails = NotificationDetails(
+    const notificationDetails = NotificationDetails(
       android: androidDetails,
       iOS: DarwinNotificationDetails(),
     );
 
+    // FIX: Calling show with positional arguments to match the library core
     await _localNotifications.show(
       id,
       title,
       body,
-      platformDetails,
+      notificationDetails,
       payload: payload,
     );
   }
 
   Future<void> _showForegroundNotification(RemoteMessage message) async {
-    if (message.notification != null) {
+    final notification = message.notification;
+    if (notification != null) {
       await showNotification(
-        id: message.hashCode,
-        title: message.notification?.title ?? 'SCA Update',
-        body: message.notification?.body ?? '',
+        id: notification.hashCode,
+        title: notification.title ?? 'SCA Update',
+        body: notification.body ?? '',
         payload: message.data.toString(),
       );
     }
   }
 
   Future<String?> getToken() async {
-    return await _firebaseMessaging.getToken();
+    return await FirebaseMessaging.instance.getToken();
   }
 }
