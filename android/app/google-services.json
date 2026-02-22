@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "630361428947",
+    "project_id": "sca-app-73e87",
+    "storage_bucket": "sca-app-73e87.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:630361428947:android:87d7dda57b2017e8101526",
+        "android_client_info": {
+          "package_name": "com.sca.smart_call_assistant"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA-BRBpFazkwyLGKA3Q_OVgxDXcweX4QwE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
