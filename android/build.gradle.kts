@@ -15,6 +15,19 @@ subprojects {
     val newSubprojectBuildDir: Directory = newBuildDir.dir(project.name)
     project.layout.buildDirectory.value(newSubprojectBuildDir)
 }
+
+// ✅ حل مشكلة تحذيرات Java 8 بطريقة آمنة
+subprojects {
+    tasks.withType<JavaCompile>().configureEach {
+        // إيقاف رسائل التحذير الخاصة بالإصدارات القديمة
+        options.compilerArgs.add("-Xlint:-options")
+        
+        // محاولة فرض إصدار جافا 17 إذا كان متاحاً
+        sourceCompatibility = "17"
+        targetCompatibility = "17"
+    }
+}
+
 subprojects {
     project.evaluationDependsOn(":app")
 }
