@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:animate_do/animate_do.dart';
+import '../../../../core/components/app_logo.dart';
 
 class AboutScreen extends StatefulWidget {
   const AboutScreen({super.key});
@@ -29,97 +31,71 @@ class _AboutScreenState extends State<AboutScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Scaffold(
-      appBar: AppBar(title: const Text('About')),
+      appBar: AppBar(title: const Text('About SCA / عن التطبيق'), centerTitle: true),
       body: Center(
         child: Padding(
-          padding: const EdgeInsets.all(24.0),
+          padding: const EdgeInsets.symmetric(horizontal: 32.0),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Logo
-              Container(
-                width: 120,
-                height: 120,
-                decoration: BoxDecoration(
-                  color: Colors.black,
-                  borderRadius: BorderRadius.circular(24),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.2),
-                      blurRadius: 20,
-                      offset: const Offset(0, 10),
-                    ),
-                  ],
-                ),
-                child: const Icon(Icons.call, size: 64, color: Colors.white),
-              ),
-              const SizedBox(height: 32),
-
-              // App Name
-              const Text(
-                'Smart Call Assistant',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 8),
-
-              // Version
-              Text(
-                'Version $_version ($_buildNumber)',
-                style: const TextStyle(
-                  fontSize: 16,
-                  color: Colors.grey,
-                ),
+              FadeInDown(
+                duration: const Duration(milliseconds: 800),
+                child: const AppLogo(size: 120, showText: true),
               ),
               const SizedBox(height: 48),
 
-              // Developer Info
-              const Text(
-                'Developed by',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.grey,
+              FadeInUp(
+                delay: const Duration(milliseconds: 200),
+                child: Text(
+                  'Version $_version ($_buildNumber)',
+                  style: const TextStyle(fontSize: 16, color: Colors.grey, fontWeight: FontWeight.w600),
                 ),
               ),
-              const SizedBox(height: 8),
-              const Text(
-                'Mahmoud Ayman Barakat',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 8),
-              InkWell(
-                onTap: () async {
-                  final Uri url =
-                      Uri.parse('https://sites.google.com/view/mahmoudayman');
-                  if (!await launchUrl(url)) {
-                    // ignore: use_build_context_synchronously
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Could not launch URL')),
-                    );
-                  }
-                },
-                child: const Text(
-                  'Visit Website',
-                  style: TextStyle(
-                    color: Colors.blue,
-                    decoration: TextDecoration.underline,
+              const SizedBox(height: 40),
+
+              FadeInUp(
+                delay: const Duration(milliseconds: 400),
+                child: Container(
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primary.withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(color: theme.colorScheme.primary.withOpacity(0.1)),
+                  ),
+                  child: Column(
+                    children: [
+                      const Text('Developed by / المطور', style: TextStyle(fontSize: 14, color: Colors.grey)),
+                      const SizedBox(height: 8),
+                      Text('Mahmoud Ayman Barakat', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: theme.colorScheme.primary)),
+                      const SizedBox(height: 16),
+                      ElevatedButton.icon(
+                        onPressed: () => launchUrl(Uri.parse('https://sites.google.com/view/mahmoudayman')),
+                        icon: const Icon(Icons.language_rounded, size: 18),
+                        label: const Text('Developer Website'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: theme.colorScheme.primary,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
 
               const Spacer(),
-              const Text(
-                '© 2026 Mahmoud Ayman Barakat. All rights reserved.',
-                style: TextStyle(fontSize: 12, color: Colors.grey),
+              FadeIn(
+                delay: const Duration(seconds: 1),
+                child: Text(
+                  '© 2026 Mahmoud Ayman Barakat. All rights reserved.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+                ),
               ),
+              const SizedBox(height: 32),
             ],
           ),
         ),

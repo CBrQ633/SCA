@@ -13,54 +13,54 @@ dependencies:
     sdk: flutter
 
   # State Management
-  provider: ^6.1.1
+  provider: ^6.1.2
 
   # Navigation
-  go_router: ^14.0.0
+  go_router: ^14.7.2
 
   # Supabase Backend
-  supabase_flutter: ^2.5.0
+  supabase_flutter: ^2.8.3
 
   # File Handling
-  file_picker: ^8.0.0
-  image_picker: ^1.0.7
-  spreadsheet_decoder: any
-  path_provider: ^2.1.2
+  file_picker: ^8.1.7
+  image_picker: ^1.1.2
+  spreadsheet_decoder: ^2.3.0
+  path_provider: ^2.1.5
 
   # OCR
-  google_mlkit_text_recognition: ^0.13.0
+  google_mlkit_text_recognition: ^0.14.0
 
   # Phone Integration
-  url_launcher: ^6.2.4
+  url_launcher: ^6.3.1
 
   # Local Storage
-  shared_preferences: ^2.2.2
+  shared_preferences: ^2.3.5
 
   # Internationalization
   intl: ^0.20.2
 
   # UI Components
-  flutter_svg: ^2.0.10
-  cached_network_image: ^3.3.1
-  animate_do: ^3.3.4
-  fl_chart: ^0.66.0
+  flutter_svg: ^2.0.17
+  cached_network_image: ^3.4.1
+  animate_do: ^3.3.9
+  fl_chart: ^0.70.2
   glassmorphism: ^3.0.0
   flutter_speed_dial: ^7.0.0
 
   # Utilities
-  uuid: ^4.3.3
-  http: ^1.2.0
-  package_info_plus: ^9.0.0
+  uuid: ^4.5.1
+  http: ^1.3.0
+  package_info_plus: ^8.2.1
   excel: ^4.0.6
-  firebase_core: ^4.4.0
-  firebase_messaging: ^16.1.1
+  firebase_core: ^3.12.1
+  firebase_messaging: ^15.2.4
   flutter_local_notifications: ^20.1.0
-  share_plus: ^10.0.0
+  share_plus: ^10.1.4
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^3.0.1
+  flutter_lints: ^3.0.2
   flutter_launcher_icons: ^0.13.1
 
 flutter:
