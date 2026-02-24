@@ -14,7 +14,7 @@ class AppTheme {
       primary: primaryNavy,
       secondary: accentEmerald,
       surface: Colors.white,
-      onSurface: primaryNavy, // ✅ Ensures text is Navy on White
+      onSurface: primaryNavy,
       onPrimary: Colors.white,
     ),
     appBarTheme: const AppBarTheme(
@@ -25,7 +25,7 @@ class AppTheme {
       iconTheme: IconThemeData(color: primaryNavy),
       titleTextStyle: TextStyle(color: primaryNavy, fontWeight: FontWeight.bold, fontSize: 18),
     ),
-    cardTheme: CardTheme(
+    cardTheme: CardThemeData( // ✅ Corrected: CardThemeData instead of CardTheme
       color: Colors.white,
       elevation: 0,
       shape: RoundedRectangleBorder(
@@ -40,6 +40,6 @@ class AppTheme {
     ),
   );
 
-  // Forcing Light Theme for now to ensure consistency
+  // Forcing Light Theme for now to ensure consistency across the app
   static ThemeData darkTheme = lightTheme;
 }
