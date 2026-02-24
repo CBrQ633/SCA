@@ -6,37 +6,43 @@ import '../../features/auth/presentation/auth_provider.dart';
 
 class ScaffoldWithNavBar extends StatelessWidget {
   final List<NavigationDestination> tabs;
+  final StatefulNavigationShell navigationShell;
+  final Function(int)? onTap; // ✅ Added custom onTap
 
   const ScaffoldWithNavBar({
     required this.navigationShell,
     required this.tabs,
+    this.onTap,
     super.key,
   });
 
-  final StatefulNavigationShell navigationShell;
-
-  void _goBranch(int index) {
-    navigationShell.goBranch(
-      index,
-      initialLocation: index == navigationShell.currentIndex,
-    );
+  void _onItemTapped(int index) {
+    if (onTap != null) {
+      onTap!(index);
+    } else {
+      navigationShell.goBranch(
+        index,
+        initialLocation: index == navigationShell.currentIndex,
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    
     return Scaffold(
       body: navigationShell,
       bottomNavigationBar: Consumer2<SubscriptionBadgeProvider, AuthProvider>(
         builder: (context, badgeProvider, authProvider, _) {
-          final showBadge =
-              authProvider.isAdmin && badgeProvider.pendingCount > 0;
+          final showBadge = authProvider.isAdmin && badgeProvider.pendingCount > 0;
 
           final destinations = tabs.asMap().entries.map((entry) {
             final idx = entry.key;
             final destination = entry.value;
 
-            // Assuming "Sub Requests" is now the third tab (index 2) for Admin
-            if (authProvider.isAdmin && idx == 2 && showBadge) {
+            // Admin: Sub Requests is the 2nd tab (Stats=0, Requests=1, Users=2, News=3, Settings=4)
+            if (authProvider.isAdmin && idx == 1 && showBadge) {
               return NavigationDestination(
                 icon: Badge(
                   label: Text(badgeProvider.pendingCount.toString()),
@@ -48,10 +54,18 @@ class ScaffoldWithNavBar extends StatelessWidget {
             return destination;
           }).toList();
 
+          // Calculate correct selected index for inactive users
+          int selectedIdx = navigationShell.currentIndex;
+          if (!authProvider.isAdmin && !(authProvider.currentUser?.isSubscriptionActive ?? false)) {
+            selectedIdx = navigationShell.currentIndex == 3 ? 0 : 1;
+          }
+
           return NavigationBar(
-            selectedIndex: navigationShell.currentIndex,
-            onDestinationSelected: _goBranch,
+            selectedIndex: selectedIdx,
+            onDestinationSelected: _onItemTapped,
             destinations: destinations,
+            backgroundColor: Colors.white,
+            elevation: 10,
           );
         },
       ),

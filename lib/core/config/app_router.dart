@@ -21,10 +21,9 @@ import 'package:smart_call_assistant/core/constants/app_constants.dart';
 
 class AppRouter {
   static final _rootNavigatorKey = GlobalKey<NavigatorState>();
-  static GoRouter? _router;
 
   static GoRouter getRouter(AuthProvider authProvider) {
-    _router ??= GoRouter(
+    return GoRouter(
       navigatorKey: _rootNavigatorKey,
       initialLocation: AppConstants.routeLogin,
       refreshListenable: authProvider,
@@ -40,20 +39,14 @@ class AppRouter {
           return authProvider.isAdmin ? AppConstants.routeAdminDashboard : AppConstants.routeHome;
         }
 
-        // 🛡️ STRICT SUBSCRIPTION GATE
+        // 🛡️ Subscription Gate
         if (!authProvider.isAdmin) {
           final isActive = authProvider.currentUser?.isSubscriptionActive ?? false;
-          final currentPath = state.matchedLocation;
+          final path = state.matchedLocation;
           
-          // Only allow Subscription and Settings/About for inactive users
-          final allowedPaths = [
-            AppConstants.routeSubscription,
-            AppConstants.routeSettings,
-            '/settings/how-to-use',
-            '/settings/about'
-          ];
-          
-          final isAllowed = allowedPaths.any((path) => currentPath == path);
+          // Allow Subscription, Settings, and sub-pages
+          final isAllowed = path.startsWith('/subscription') || 
+                            path.startsWith('/settings');
 
           if (!isActive && !isAllowed) {
             return AppConstants.routeSubscription;
@@ -71,8 +64,8 @@ class AppRouter {
             final isAdmin = authProvider.isAdmin;
             final isActive = authProvider.currentUser?.isSubscriptionActive ?? false;
 
-            // ✅ Tabs Filter: Inactive users only see Subscription & Settings
-            final List<NavigationDestination> tabs;
+            // ✅ Tabs Logic: Inactive users see only Subscription & Settings
+            List<NavigationDestination> tabs;
             if (isAdmin) {
               tabs = const [
                 NavigationDestination(icon: Icon(Icons.analytics_outlined), label: 'Stats'),
@@ -82,6 +75,9 @@ class AppRouter {
                 NavigationDestination(icon: Icon(Icons.settings_outlined), label: 'Settings'),
               ];
             } else if (!isActive) {
+              // ⚠️ IMPORTANT: These must map to the branch indices below
+              // Tab 0 -> Branch 3 (Subscription)
+              // Tab 1 -> Branch 4 (Settings)
               tabs = const [
                 NavigationDestination(icon: Icon(Icons.star_outline), label: 'Subscription'),
                 NavigationDestination(icon: Icon(Icons.settings_outlined), label: 'Settings'),
@@ -96,7 +92,19 @@ class AppRouter {
               ];
             }
 
-            return ScaffoldWithNavBar(navigationShell: navigationShell, tabs: tabs);
+            return ScaffoldWithNavBar(
+              navigationShell: navigationShell, 
+              tabs: tabs,
+              // Pass custom mapping for inactive users
+              onTap: (index) {
+                if (!isAdmin && !isActive) {
+                  // Map Tab 0 to Branch 3, Tab 1 to Branch 4
+                  navigationShell.goBranch(index == 0 ? 3 : 4);
+                } else {
+                  navigationShell.goBranch(index);
+                }
+              },
+            );
           },
           branches: authProvider.isAdmin
               ? [
@@ -112,16 +120,20 @@ class AppRouter {
                   ]),
                 ]
               : [
-                  // USER BRANCHES (Filtered by Subscription via the logic above)
+                  // Branch 0
                   StatefulShellBranch(routes: [
                     GoRoute(path: AppConstants.routeHome, builder: (context, state) => const CallListsScreen(), routes: [
                       GoRoute(path: ':listId', builder: (context, state) => CallListDetailsScreen(listId: state.pathParameters['listId']!)),
                       GoRoute(path: ':listId/process', builder: (context, state) => CallProcessScreen(listId: state.pathParameters['listId']!)),
                     ]),
                   ]),
+                  // Branch 1
                   StatefulShellBranch(routes: [GoRoute(path: '/reports', builder: (context, state) => const ReportsScreen())]),
+                  // Branch 2
                   StatefulShellBranch(routes: [GoRoute(path: '/news', builder: (context, state) => const NewsScreen())]),
+                  // Branch 3
                   StatefulShellBranch(routes: [GoRoute(path: AppConstants.routeSubscription, builder: (context, state) => const SubscriptionScreen())]),
+                  // Branch 4
                   StatefulShellBranch(routes: [
                     GoRoute(path: AppConstants.routeSettings, builder: (context, state) => const SettingsScreen(), routes: [
                       GoRoute(path: 'how-to-use', builder: (context, state) => const HowToUseScreen()),
@@ -132,6 +144,5 @@ class AppRouter {
         ),
       ],
     );
-    return _router!;
   }
 }
