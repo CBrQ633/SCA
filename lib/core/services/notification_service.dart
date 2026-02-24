@@ -1,27 +1,27 @@
 import 'package:flutter/foundation.dart' as foundation;
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart' as fln;
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
   factory NotificationService() => _instance;
   NotificationService._internal();
 
-  final fln.FlutterLocalNotificationsPlugin _localNotifications =
-      fln.FlutterLocalNotificationsPlugin();
+  final FlutterLocalNotificationsPlugin _localNotifications =
+      FlutterLocalNotificationsPlugin();
 
-  static const fln.AndroidNotificationChannel _channel = fln.AndroidNotificationChannel(
+  static const AndroidNotificationChannel _channel = AndroidNotificationChannel(
     'high_importance_channel',
     'High Importance Notifications',
     description: 'This channel is used for important notifications.',
-    importance: fln.Importance.max,
+    importance: Importance.max,
     playSound: true,
     enableVibration: true,
   );
 
   Future<void> initialize() async {
-    // 1. Request Permission
+    // 1. Request FCM permission
     await FirebaseMessaging.instance.requestPermission(
       alert: true,
       badge: true,
@@ -30,41 +30,42 @@ class NotificationService {
 
     // 2. Setup Android Channel
     final androidPlugin = _localNotifications.resolvePlatformSpecificImplementation<
-        fln.AndroidFlutterLocalNotificationsPlugin>();
+        AndroidFlutterLocalNotificationsPlugin>();
     if (androidPlugin != null) {
       await androidPlugin.createNotificationChannel(_channel);
     }
 
     // 3. Init Settings
-    const androidSettings = fln.AndroidInitializationSettings('@mipmap/ic_launcher');
-    const iosSettings = fln.DarwinInitializationSettings(
+    const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const iosSettings = DarwinInitializationSettings(
       requestAlertPermission: true,
       requestBadgePermission: true,
       requestSoundPermission: true,
     );
 
-    const initSettings = fln.InitializationSettings(
+    const initSettings = InitializationSettings(
       android: androidSettings,
       iOS: iosSettings,
     );
 
-    // FIXED: Standard initialization call
     await _localNotifications.initialize(
       initSettings,
-      onDidReceiveNotificationResponse: (fln.NotificationResponse details) {
-        foundation.debugPrint('Notification clicked: ${details.payload}');
+      onDidReceiveNotificationResponse: (NotificationResponse response) {
+        foundation.debugPrint('Notification clicked: ${response.payload}');
       },
     );
 
+    // 4. Topics
     try {
       if (Firebase.apps.isNotEmpty) {
         await FirebaseMessaging.instance.subscribeToTopic('all_users');
         await FirebaseMessaging.instance.subscribeToTopic('news');
       }
     } catch (e) {
-      foundation.debugPrint('Topic subscription error: $e');
+      foundation.debugPrint('Topic error: $e');
     }
 
+    // 5. Listen to messages
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
       _showForegroundNotification(message);
     });
@@ -76,21 +77,18 @@ class NotificationService {
     required String body,
     String? payload,
   }) async {
-    const androidDetails = fln.AndroidNotificationDetails(
-      'high_importance_channel',
-      'High Importance Notifications',
-      channelDescription: 'This channel is used for important notifications.',
-      importance: fln.Importance.max,
-      priority: fln.Priority.high,
-      showWhen: true,
+    const notificationDetails = NotificationDetails(
+      android: AndroidNotificationDetails(
+        'high_importance_channel',
+        'High Importance Notifications',
+        channelDescription: 'This channel is used for important notifications.',
+        importance: Importance.max,
+        priority: Priority.high,
+        showWhen: true,
+      ),
+      iOS: DarwinNotificationDetails(),
     );
 
-    const notificationDetails = fln.NotificationDetails(
-      android: androidDetails,
-      iOS: fln.DarwinNotificationDetails(),
-    );
-
-    // FIXED: Standard show call with positional arguments
     await _localNotifications.show(
       id,
       title,
