@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
-import 'package:animate_do/animate_do.dart';
 import 'package:smart_call_assistant/features/auth/presentation/auth_provider.dart';
 import 'package:smart_call_assistant/core/constants/app_constants.dart';
-import 'package:smart_call_assistant/l10n/app_localizations.dart';
 import 'package:smart_call_assistant/core/components/app_logo.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -43,7 +41,7 @@ class _LoginScreenState extends State<LoginScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(authProvider.errorMessage ?? 'Login failed / فشل تسجيل الدخول'),
-            backgroundColor: Theme.of(context).colorScheme.error,
+            backgroundColor: Colors.red,
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -53,11 +51,10 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
     final theme = Theme.of(context);
 
     return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
+      backgroundColor: const Color(0xFFF1F5F9), // Clean Light background
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -68,123 +65,85 @@ class _LoginScreenState extends State<LoginScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Brand Identity
-                  FadeInDown(
-                    duration: const Duration(milliseconds: 800),
-                    child: const AppLogo(size: 110, showText: true),
-                  ),
+                  const AppLogo(size: 100, showText: true),
                   const SizedBox(height: 56),
 
-                  // Welcome Text
-                  FadeInLeft(
-                    delay: const Duration(milliseconds: 200),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Welcome Back / مرحباً بك',
-                          style: theme.textTheme.headlineMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: theme.colorScheme.primary,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Sign in to continue managing your calls.',
-                          style: TextStyle(color: Colors.grey[600]),
-                        ),
-                      ],
+                  Text(
+                    'Welcome Back / مرحباً بك',
+                    style: theme.textTheme.headlineMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: const Color(0xFF0F172A),
                     ),
+                    textAlign: TextAlign.center,
                   ),
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 40),
 
-                  // Email Input
-                  FadeInUp(
-                    delay: const Duration(milliseconds: 400),
-                    child: TextFormField(
-                      controller: _emailController,
-                      keyboardType: TextInputType.emailAddress,
-                      decoration: InputDecoration(
-                        labelText: l10n.email,
-                        hintText: 'example@email.com',
-                        prefixIcon: Icon(Icons.email_outlined, color: theme.colorScheme.primary),
-                      ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) return 'Email is required';
-                        if (!value.contains('@')) return 'Enter a valid email';
-                        return null;
-                      },
+                  // Email
+                  TextFormField(
+                    controller: _emailController,
+                    keyboardType: TextInputType.emailAddress,
+                    decoration: InputDecoration(
+                      labelText: 'Email / البريد الإلكتروني',
+                      hintText: 'example@email.com',
+                      prefixIcon: const Icon(Icons.email_outlined, color: Color(0xFF0F172A)),
+                      filled: true,
+                      fillColor: Colors.white,
                     ),
+                    validator: (v) => (v == null || !v.contains('@')) ? 'Enter valid email' : null,
                   ),
                   const SizedBox(height: 20),
 
-                  // Password Input
-                  FadeInUp(
-                    delay: const Duration(milliseconds: 600),
-                    child: TextFormField(
-                      controller: _passwordController,
-                      obscureText: _obscurePassword,
-                      decoration: InputDecoration(
-                        labelText: l10n.password,
-                        prefixIcon: Icon(Icons.lock_outlined, color: theme.colorScheme.primary),
-                        suffixIcon: IconButton(
-                          icon: Icon(
-                            _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
-                            size: 20,
-                          ),
-                          onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
-                        ),
+                  // Password
+                  TextFormField(
+                    controller: _passwordController,
+                    obscureText: _obscurePassword,
+                    decoration: InputDecoration(
+                      labelText: 'Password / كلمة السر',
+                      prefixIcon: const Icon(Icons.lock_outlined, color: Color(0xFF0F172A)),
+                      suffixIcon: IconButton(
+                        icon: Icon(_obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined, size: 20),
+                        onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
                       ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) return 'Password is required';
-                        if (value.length < 6) return 'At least 6 characters';
-                        return null;
-                      },
+                      filled: true,
+                      fillColor: Colors.white,
                     ),
+                    validator: (v) => (v == null || v.length < 6) ? 'At least 6 chars' : null,
                   ),
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 40),
 
-                  // Login Action
-                  FadeInUp(
-                    delay: const Duration(milliseconds: 800),
-                    child: Consumer<AuthProvider>(
-                      builder: (context, authProvider, _) {
-                        return ElevatedButton(
-                          onPressed: authProvider.isLoading ? null : _handleLogin,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: theme.colorScheme.primary,
-                            padding: const EdgeInsets.symmetric(vertical: 18),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                          ),
-                          child: authProvider.isLoading
-                              ? const SizedBox(
-                                  height: 22,
-                                  width: 22,
-                                  child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
-                                )
-                              : Text(l10n.login.toUpperCase(), style: const TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.2)),
-                        );
-                      },
-                    ),
+                  // Login Button - Fixed Text Visibility
+                  Consumer<AuthProvider>(
+                    builder: (context, auth, _) {
+                      return ElevatedButton(
+                        onPressed: auth.isLoading ? null : _handleLogin,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF0F172A), // Deep Navy
+                          foregroundColor: Colors.white, // Pure White Text
+                          padding: const EdgeInsets.symmetric(vertical: 18),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          elevation: 2,
+                        ),
+                        child: auth.isLoading
+                            ? const SizedBox(height: 22, width: 22, child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white))
+                            : const Text(
+                                'LOGIN / تسجيل الدخول', 
+                                style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.1, fontSize: 16),
+                              ),
+                      );
+                    },
                   ),
                   const SizedBox(height: 24),
 
                   // Register Footer
-                  FadeIn(
-                    delay: const Duration(milliseconds: 1000),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(l10n.dontHaveAccount, style: TextStyle(color: Colors.grey[600])),
-                        TextButton(
-                          onPressed: () => context.go(AppConstants.routeRegister),
-                          child: Text(
-                            l10n.register,
-                            style: TextStyle(color: theme.colorScheme.secondary, fontWeight: FontWeight.bold),
-                          ),
-                        ),
-                      ],
-                    ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Text('Don\'t have an account? ', style: TextStyle(color: Colors.blueGrey)),
+                      TextButton(
+                        onPressed: () => context.go(AppConstants.routeRegister),
+                        child: const Text('Register / حساب جديد', style: TextStyle(color: Color(0xFF10B981), fontWeight: FontWeight.bold)),
+                      ),
+                    ],
                   ),
                 ],
               ),
