@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:animate_do/animate_do.dart';
 import 'package:smart_call_assistant/core/providers/settings_provider.dart';
 import 'package:smart_call_assistant/features/auth/presentation/auth_provider.dart';
 import 'package:smart_call_assistant/core/components/app_logo.dart';
@@ -15,131 +14,103 @@ class HowToUseScreen extends StatelessWidget {
     final isAdmin = context.watch<AuthProvider>().isAdmin;
 
     return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
+      backgroundColor: const Color(0xFFF8FAFC), // Bright background for clarity
       appBar: AppBar(
-        title: Text(isArabic ? 'دليل الاستخدام' : 'User Guide'),
+        title: Text(isArabic ? 'دليل الاستخدام' : 'User Guide', style: const TextStyle(color: Colors.black)),
+        backgroundColor: Colors.white,
+        elevation: 0,
         centerTitle: true,
+        iconTheme: const IconThemeData(color: Colors.black),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
-            FadeInDown(
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.primary,
-                  borderRadius: BorderRadius.circular(24),
-                  boxShadow: [BoxShadow(color: theme.colorScheme.primary.withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 10))],
-                ),
-                child: Column(
-                  children: [
-                    const AppLogo(size: 60, showText: false, color: Colors.white),
-                    const SizedBox(height: 16),
-                    Text(
-                      isAdmin ? (isArabic ? 'لوحة تحكم المدير' : 'Admin Dashboard') : (isArabic ? 'مرحباً بك في SCA' : 'Welcome to SCA'),
-                      style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
-                    ),
-                    Text(
-                      isArabic ? 'دليلك السريع لإنجاز مهامك' : 'Your quick guide to success',
-                      style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 14),
-                    ),
-                  ],
-                ),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: const Color(0xFF0F172A), // Deep Navy
+                borderRadius: BorderRadius.circular(24),
+              ),
+              child: Column(
+                children: [
+                  const AppLogo(size: 50, showText: false, color: Colors.white),
+                  const SizedBox(height: 16),
+                  Text(
+                    isAdmin ? (isArabic ? 'إدارة النظام' : 'Management') : (isArabic ? 'ابدأ مع SCA' : 'Get Started'),
+                    style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+                  ),
+                ],
               ),
             ),
             const SizedBox(height: 32),
-            if (isAdmin) ..._buildAdminGuide(isArabic, theme) else ..._buildUserGuide(isArabic, theme),
+            if (isAdmin) ..._buildAdminGuide(isArabic) else ..._buildUserGuide(isArabic),
           ],
         ),
       ),
     );
   }
 
-  List<Widget> _buildUserGuide(bool isArabic, ThemeData theme) {
+  List<Widget> _buildUserGuide(bool isArabic) {
     return [
       _buildStepCard(
-        '1',
-        isArabic ? 'استيراد البيانات' : 'Import Data',
-        isArabic ? 'من شاشة المكالمات، اضغط على زر (+) واختر ملف Excel أو صورة لقراءة الأرقام تلقائياً.' : 'From Calls screen, press (+) and choose Excel or Image to extract numbers automatically.',
-        Icons.cloud_download_rounded,
-        theme.colorScheme.primary,
+        isArabic ? '1. استيراد الأرقام' : '1. Import Contacts',
+        isArabic ? 'اضغط (+) في شاشة المكالمات واختر ملف Excel أو صورة.' : 'Press (+) in Calls screen and pick Excel or an Image.',
+        Icons.upload_file_rounded,
       ),
       _buildStepCard(
-        '2',
-        isArabic ? 'بدء جلسة الاتصال' : 'Start Calling',
-        isArabic ? 'اختر القائمة واضغط "بدء". سيقوم التطبيق بعرض العملاء واحداً تلو الآخر لتوفير وقتك.' : 'Select a list and press "Start". The app will show customers one by one to save your time.',
-        Icons.phone_in_talk_rounded,
-        theme.colorScheme.secondary,
+        isArabic ? '2. بدء الجلسة' : '2. Start Session',
+        isArabic ? 'اختر القائمة واضغط "START" للبدء بالاتصال بالترتيب.' : 'Select a list and press "START" to begin sequential calling.',
+        Icons.play_circle_fill_rounded,
       ),
       _buildStepCard(
-        '3',
-        isArabic ? 'التواصل السريع' : 'Quick Connect',
-        isArabic ? 'يمكنك الاتصال هاتفياً أو فتح واتساب بضغطة واحدة دون الحاجة لحفظ الرقم.' : 'You can call or open WhatsApp with one click without saving the contact.',
+        isArabic ? '3. التواصل السريع' : '3. Quick Connect',
+        isArabic ? 'استخدم زر الاتصال أو الواتساب دون حفظ الرقم.' : 'Use Call or WhatsApp buttons without saving numbers.',
         Icons.bolt_rounded,
-        Colors.orangeAccent,
-      ),
-      _buildStepCard(
-        '4',
-        isArabic ? 'متابعة الإنجاز' : 'Track Success',
-        isArabic ? 'راجع شاشة التقارير لترى معدل نجاحك وإحصائيات مكالماتك اليومية.' : 'Check the Reports screen to see your success rate and daily call statistics.',
-        Icons.auto_graph_rounded,
-        Colors.purpleAccent,
       ),
     ];
   }
 
-  List<Widget> _buildAdminGuide(bool isArabic, ThemeData theme) {
+  List<Widget> _buildAdminGuide(bool isArabic) {
     return [
       _buildStepCard(
-        '!',
-        isArabic ? 'إدارة الاشتراكات' : 'Manage Subs',
-        isArabic ? 'راجع طلبات المستخدمين الجدد وقم بتفعيل حساباتهم بعد التأكد من الدفع.' : 'Review new user requests and activate their accounts after payment verification.',
+        isArabic ? 'إدارة الطلبات' : 'Subscription Requests',
+        isArabic ? 'راجع صور التحويل وقم بتفعيل حسابات المستخدمين.' : 'Review payment receipts and activate user accounts.',
         Icons.verified_user_rounded,
-        theme.colorScheme.secondary,
       ),
       _buildStepCard(
-        '2',
-        isArabic ? 'مراقبة النظام' : 'System Monitor',
-        isArabic ? 'تابع إجمالي المكالمات والمستخدمين النشطين من لوحة التحكم الرئيسية.' : 'Monitor total calls and active users from the main admin dashboard.',
-        Icons.admin_panel_settings_rounded,
-        theme.colorScheme.primary,
+        isArabic ? 'مراقبة الإحصائيات' : 'Monitor Stats',
+        isArabic ? 'تابع إجمالي المستخدمين والمكالمات اليومية من اللوحة.' : 'Track total users and daily calls from your dashboard.',
+        Icons.analytics_rounded,
       ),
     ];
   }
 
-  Widget _buildStepCard(String step, String title, String desc, IconData icon, Color color) {
-    return FadeInUp(
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 16),
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.black.withOpacity(0.05)),
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(color: color.withOpacity(0.1), shape: BoxShape.circle),
-              child: Icon(icon, color: color, size: 24),
+  Widget _buildStepCard(String title, String desc, IconData icon) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.black.withOpacity(0.05)),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: const Color(0xFF10B981), size: 28),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF0F172A))),
+                const SizedBox(height: 4),
+                Text(desc, style: TextStyle(fontSize: 13, color: Colors.blueGrey[600], height: 1.4)),
+              ],
             ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 4),
-                  Text(desc, style: TextStyle(fontSize: 13, color: Colors.grey[600], height: 1.4)),
-                ],
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
