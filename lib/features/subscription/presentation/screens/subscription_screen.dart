@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import 'package:animate_do/animate_do.dart';
 import 'package:smart_call_assistant/core/constants/app_constants.dart';
 import 'package:smart_call_assistant/features/auth/data/user_model.dart';
 import 'package:smart_call_assistant/core/utils/app_notifications.dart';
@@ -26,7 +25,6 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
 
   static const double priceMonthly = 100.0;
   static const double priceQuarterly = 250.0;
-
   static const String vodafoneCash = '01080305645';
   static const String instapay = '01550381486';
 
@@ -48,13 +46,9 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
         amount: amount,
         proofImage: _proofImage!,
       );
-
       if (mounted) {
-        AppNotifications.showSuccess(context, 'تم إرسال الطلب بنجاح! / Request submitted!');
-        setState(() {
-          _selectedPlan = null;
-          _proofImage = null;
-        });
+        AppNotifications.showSuccess(context, 'Request submitted! / تم إرسال الطلب');
+        setState(() { _selectedPlan = null; _proofImage = null; });
       }
     } catch (e) {
       if (mounted) AppNotifications.showError(context, 'Error: $e');
@@ -65,134 +59,91 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final user = context.watch<AuthProvider>().currentUser;
-    final isPending = user?.subscriptionStatus == 'pending';
     final isActive = user?.isSubscriptionActive ?? false;
-
-    // Specific Emerald Color Code
-    const emeraldColor = Color(0xFF10B981);
-
-    if (user?.isAdmin ?? false) {
-      return Scaffold(
-        appBar: AppBar(title: const Text('Admin Access')),
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const AppLogo(size: 100, showText: true),
-              const SizedBox(height: 24),
-              const Text('أنت مسئول (Admin)\nلا تحتاج لاشتراك', textAlign: TextAlign.center, style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 32),
-              ElevatedButton(onPressed: () => context.go(AppConstants.routeAdminDashboard), child: const Text('Admin Dashboard')),
-            ],
-          ),
-        ),
-      );
-    }
+    final isPending = user?.subscriptionStatus == 'pending';
+    const textNavy = Color(0xFF0F172A);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Subscription / الاشتراك')),
+      backgroundColor: const Color(0xFFF1F5F9),
+      appBar: AppBar(
+        title: const Text('Subscription / الاشتراك', style: TextStyle(color: textNavy, fontWeight: FontWeight.bold)),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        centerTitle: true,
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
-            FadeInDown(
-              child: Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: isActive ? emeraldColor.withOpacity(0.1) : (isPending ? Colors.orange[50] : Colors.red[50]),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: isActive ? emeraldColor.withOpacity(0.3) : (isPending ? Colors.orange[200]! : Colors.red[200]!)),
-                ),
-                child: Row(
-                  children: [
-                    Icon(isActive ? Icons.verified_user : (isPending ? Icons.timer : Icons.error_outline), color: isActive ? emeraldColor : (isPending ? Colors.orange : Colors.red), size: 32),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(isActive ? 'Account Active / الحساب نشط' : (isPending ? 'Under Review / قيد المراجعة' : 'Subscription Required / مطلوب اشتراك'), style: const TextStyle(fontWeight: FontWeight.bold)),
-                          Text(isActive ? 'Expires: ${user?.subscriptionEnd?.toLocal().toString().split(' ')[0]}' : 'Follow steps below / اتبع الخطوات بالأسفل', style: TextStyle(fontSize: 12, color: Colors.grey[700])),
-                        ],
-                      ),
+            // Status Card
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: isActive ? const Color(0xFFD1FAE5) : (isPending ? const Color(0xFFFEF3C7) : const Color(0xFFFEE2E2)),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: isActive ? const Color(0xFF10B981) : (isPending ? Colors.amber : Colors.redAccent)),
+              ),
+              child: Row(
+                children: [
+                  Icon(isActive ? Icons.verified : (isPending ? Icons.timer : Icons.error_outline), color: isActive ? Colors.green : (isPending ? Colors.orange : Colors.red)),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      isActive ? 'Active / نشط' : (isPending ? 'Pending / قيد المراجعة' : 'Inactive / غير نشط'),
+                      style: const TextStyle(fontWeight: FontWeight.bold, color: textNavy),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
             const SizedBox(height: 32),
 
             if (!isActive && !isPending) ...[
-              FadeInUp(
-                child: Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(color: theme.colorScheme.primary, borderRadius: BorderRadius.circular(24)),
-                  child: Column(
-                    children: [
-                      const Text('Payment Methods / طرق الدفع', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
-                      const Divider(color: Colors.white24, height: 24),
-                      _buildPaymentTile(Icons.phone_iphone, 'Vodafone Cash', vodafoneCash, Colors.redAccent),
-                      const SizedBox(height: 12),
-                      _buildPaymentTile(Icons.account_balance, 'InstaPay', instapay, Colors.greenAccent),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 32),
-              FadeInLeft(child: _buildPlanTile('Monthly / شهر', '100 EGP', 'monthly', theme)),
+              // Payment Info
+              _buildSectionCard([
+                _buildPaymentRow('Vodafone Cash', vodafoneCash, Colors.red),
+                const Divider(),
+                _buildPaymentRow('InstaPay', instapay, Colors.green),
+              ]),
+              const SizedBox(height: 24),
+              
+              // Plans
+              _buildPlanTile('Monthly / شهر', '100 EGP', 'monthly'),
               const SizedBox(height: 12),
-              FadeInRight(child: _buildPlanTile('3 Months / ربع سنوي', '250 EGP', 'quarterly', theme, bestValue: true)),
-              const SizedBox(height: 32),
-              FadeInUp(
-                child: GestureDetector(
-                  onTap: _pickImage,
-                  child: Container(
-                    height: 180,
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      color: Colors.grey[100],
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: theme.colorScheme.primary.withOpacity(0.1), width: 2),
-                    ),
-                    child: _proofImage != null
-                      ? ClipRRect(borderRadius: BorderRadius.circular(18), child: Image.file(_proofImage!, fit: BoxFit.cover))
-                      : Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                          Icon(Icons.add_photo_alternate_rounded, size: 40, color: theme.colorScheme.primary),
-                          const SizedBox(height: 8),
-                          const Text('Upload Receipt / ارفع الإيصال', style: TextStyle(fontWeight: FontWeight.bold)),
-                        ]),
-                  ),
+              _buildPlanTile('3 Months / ٣ شهور', '250 EGP', 'quarterly'),
+              
+              const SizedBox(height: 24),
+              
+              // Upload Area
+              GestureDetector(
+                onTap: _pickImage,
+                child: Container(
+                  height: 150,
+                  width: double.infinity,
+                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), border: Border.all(color: Colors.grey.shade300, width: 2, style: BorderStyle.solid)),
+                  child: _proofImage != null 
+                    ? ClipRRect(borderRadius: BorderRadius.circular(18), child: Image.file(_proofImage!, fit: BoxFit.cover))
+                    : const Column(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.add_photo_alternate, size: 40, color: textNavy), Text('Upload Receipt / ارفع الإيصال', style: TextStyle(color: textNavy, fontWeight: FontWeight.bold))]),
                 ),
               ),
               const SizedBox(height: 32),
-              FadeInUp(
-                child: SizedBox(
-                  width: double.infinity,
-                  height: 56,
-                  child: ElevatedButton(
-                    onPressed: _isLoading || _selectedPlan == null || _proofImage == null ? null : () => _submitRequest(user!),
-                    style: ElevatedButton.styleFrom(backgroundColor: theme.colorScheme.secondary, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
-                    child: _isLoading ? const CircularProgressIndicator(color: Colors.white) : const Text('SUBMIT REQUEST / إرسال الطلب', style: TextStyle(fontWeight: FontWeight.bold)),
-                  ),
+              
+              SizedBox(
+                width: double.infinity, height: 56,
+                child: ElevatedButton(
+                  onPressed: _isLoading || _selectedPlan == null || _proofImage == null ? null : () => _submitRequest(user!),
+                  style: ElevatedButton.styleFrom(backgroundColor: textNavy, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
+                  child: _isLoading ? const CircularProgressIndicator(color: Colors.white) : const Text('SUBMIT / إرسال الطلب', style: TextStyle(fontWeight: FontWeight.bold)),
                 ),
               ),
             ] else if (isPending) ...[
               const SizedBox(height: 40),
-              FadeInUp(
-                child: Column(
-                  children: [
-                    const Icon(Icons.mark_email_read_rounded, size: 80, color: Colors.orange),
-                    const SizedBox(height: 16),
-                    const Text('Checking Payment / جاري المراجعة', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 8),
-                    const Text('We will activate your account soon.\nسنقوم بتفعيل حسابك قريباً.', textAlign: TextAlign.center),
-                    const SizedBox(height: 32),
-                    OutlinedButton.icon(onPressed: () => context.read<AuthProvider>().refreshUser(), icon: const Icon(Icons.refresh), label: const Text('Refresh / تحديث')),
-                  ],
-                ),
-              ),
+              const Icon(Icons.mark_email_read_rounded, size: 80, color: Colors.orange),
+              const SizedBox(height: 16),
+              const Text('We are checking your payment.\nسوف نقوم بتفعيل حسابك فور التأكد.', textAlign: TextAlign.center, style: TextStyle(color: textNavy, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 32),
+              OutlinedButton(onPressed: () => context.read<AuthProvider>().refreshUser(), child: const Text('Refresh / تحديث')),
             ],
           ],
         ),
@@ -200,44 +151,33 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     );
   }
 
-  Widget _buildPaymentTile(IconData icon, String label, String value, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(color: Colors.white.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
-      child: Row(
-        children: [
-          Icon(icon, color: color, size: 24),
-          const SizedBox(width: 12),
-          Text(label, style: const TextStyle(color: Colors.white70, fontSize: 13)),
-          const Spacer(),
-          SelectableText(value, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15)),
-        ],
-      ),
+  Widget _buildSectionCard(List<Widget> children) {
+    return Container(padding: const EdgeInsets.all(16), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)), child: Column(children: children));
+  }
+
+  Widget _buildPaymentRow(String label, String value, Color color) {
+    return ListTile(
+      leading: Icon(Icons.payment, color: color),
+      title: Text(label, style: const TextStyle(fontSize: 13, color: Colors.blueGrey)),
+      trailing: SelectableText(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Color(0xFF0F172A))),
     );
   }
 
-  Widget _buildPlanTile(String title, String price, String value, ThemeData theme, {bool bestValue = false}) {
+  Widget _buildPlanTile(String title, String price, String value) {
     final isSelected = _selectedPlan == value;
     return InkWell(
       onTap: () => setState(() => _selectedPlan = value),
       child: Container(
         padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: isSelected ? theme.colorScheme.secondary : Colors.black.withOpacity(0.05), width: 2),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10)],
-        ),
+        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: isSelected ? const Color(0xFF10B981) : Colors.transparent, width: 2)),
         child: Row(
           children: [
-            Icon(isSelected ? Icons.check_circle : Icons.circle_outlined, color: isSelected ? theme.colorScheme.secondary : Colors.grey),
+            Icon(isSelected ? Icons.check_circle : Icons.circle_outlined, color: isSelected ? const Color(0xFF10B981) : Colors.grey),
             const SizedBox(width: 16),
             Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-              Text(price, style: TextStyle(color: theme.colorScheme.secondary, fontWeight: FontWeight.w600)),
+              Text(title, style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+              Text(price, style: const TextStyle(color: Color(0xFF10B981), fontWeight: FontWeight.bold)),
             ]),
-            const Spacer(),
-            if (bestValue) Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), decoration: BoxDecoration(color: Colors.orange[100], borderRadius: BorderRadius.circular(8)), child: const Text('Best Value', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.orange))),
           ],
         ),
       ),
