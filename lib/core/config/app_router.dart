@@ -39,18 +39,11 @@ class AppRouter {
           return authProvider.isAdmin ? AppConstants.routeAdminDashboard : AppConstants.routeHome;
         }
 
-        // 🛡️ Subscription Gate
         if (!authProvider.isAdmin) {
           final isActive = authProvider.currentUser?.isSubscriptionActive ?? false;
           final path = state.matchedLocation;
-          
-          // Allow Subscription, Settings, and sub-pages
-          final isAllowed = path.startsWith('/subscription') || 
-                            path.startsWith('/settings');
-
-          if (!isActive && !isAllowed) {
-            return AppConstants.routeSubscription;
-          }
+          final isAllowed = path.startsWith('/subscription') || path.startsWith('/settings');
+          if (!isActive && !isAllowed) return AppConstants.routeSubscription;
         }
 
         return null;
@@ -64,41 +57,35 @@ class AppRouter {
             final isAdmin = authProvider.isAdmin;
             final isActive = authProvider.currentUser?.isSubscriptionActive ?? false;
 
-            // ✅ Tabs Logic: Inactive users see only Subscription & Settings
-            List<NavigationDestination> tabs;
+            final List<NavigationDestination> tabs;
             if (isAdmin) {
               tabs = const [
-                NavigationDestination(icon: Icon(Icons.analytics_outlined), label: 'Stats'),
-                NavigationDestination(icon: Icon(Icons.subscriptions_outlined), label: 'Requests'),
-                NavigationDestination(icon: Icon(Icons.people_outline), label: 'Users'),
-                NavigationDestination(icon: Icon(Icons.newspaper_outlined), label: 'News'),
-                NavigationDestination(icon: Icon(Icons.settings_outlined), label: 'Settings'),
+                NavigationDestination(icon: Icon(Icons.analytics_outlined), selectedIcon: Icon(Icons.analytics_rounded), label: 'Stats'),
+                NavigationDestination(icon: Icon(Icons.account_balance_wallet_outlined), selectedIcon: Icon(Icons.account_balance_wallet_rounded), label: 'Requests'),
+                NavigationDestination(icon: Icon(Icons.manage_accounts_outlined), selectedIcon: Icon(Icons.manage_accounts_rounded), label: 'Users'),
+                NavigationDestination(icon: Icon(Icons.grid_view_outlined), selectedIcon: Icon(Icons.grid_view_rounded), label: 'News'),
+                NavigationDestination(icon: Icon(Icons.tune_outlined), selectedIcon: Icon(Icons.tune_rounded), label: 'Settings'),
               ];
             } else if (!isActive) {
-              // ⚠️ IMPORTANT: These must map to the branch indices below
-              // Tab 0 -> Branch 3 (Subscription)
-              // Tab 1 -> Branch 4 (Settings)
               tabs = const [
-                NavigationDestination(icon: Icon(Icons.star_outline), label: 'Subscription'),
-                NavigationDestination(icon: Icon(Icons.settings_outlined), label: 'Settings'),
+                NavigationDestination(icon: Icon(Icons.auto_awesome_outlined), selectedIcon: Icon(Icons.auto_awesome_rounded), label: 'Plans'),
+                NavigationDestination(icon: Icon(Icons.tune_outlined), selectedIcon: Icon(Icons.tune_rounded), label: 'Settings'),
               ];
             } else {
               tabs = const [
-                NavigationDestination(icon: Icon(Icons.call_outlined), label: 'Calls'),
-                NavigationDestination(icon: Icon(Icons.insights_outlined), label: 'Reports'),
-                NavigationDestination(icon: Icon(Icons.newspaper_outlined), label: 'News'),
-                NavigationDestination(icon: Icon(Icons.star_outline), label: 'Subscription'),
-                NavigationDestination(icon: Icon(Icons.settings_outlined), label: 'Settings'),
+                NavigationDestination(icon: Icon(Icons.quick_contacts_dialer_outlined), selectedIcon: Icon(Icons.quick_contacts_dialer_rounded), label: 'Calls'),
+                NavigationDestination(icon: Icon(Icons.bar_chart_outlined), selectedIcon: Icon(Icons.bar_chart_rounded), label: 'Insights'),
+                NavigationDestination(icon: Icon(Icons.grid_view_outlined), selectedIcon: Icon(Icons.grid_view_rounded), label: 'News'),
+                NavigationDestination(icon: Icon(Icons.auto_awesome_outlined), selectedIcon: Icon(Icons.auto_awesome_rounded), label: 'Upgrade'),
+                NavigationDestination(icon: Icon(Icons.tune_outlined), selectedIcon: Icon(Icons.tune_rounded), label: 'Settings'),
               ];
             }
 
             return ScaffoldWithNavBar(
               navigationShell: navigationShell, 
               tabs: tabs,
-              // Pass custom mapping for inactive users
               onTap: (index) {
                 if (!isAdmin && !isActive) {
-                  // Map Tab 0 to Branch 3, Tab 1 to Branch 4
                   navigationShell.goBranch(index == 0 ? 3 : 4);
                 } else {
                   navigationShell.goBranch(index);
@@ -120,20 +107,15 @@ class AppRouter {
                   ]),
                 ]
               : [
-                  // Branch 0
                   StatefulShellBranch(routes: [
                     GoRoute(path: AppConstants.routeHome, builder: (context, state) => const CallListsScreen(), routes: [
                       GoRoute(path: ':listId', builder: (context, state) => CallListDetailsScreen(listId: state.pathParameters['listId']!)),
                       GoRoute(path: ':listId/process', builder: (context, state) => CallProcessScreen(listId: state.pathParameters['listId']!)),
                     ]),
                   ]),
-                  // Branch 1
                   StatefulShellBranch(routes: [GoRoute(path: '/reports', builder: (context, state) => const ReportsScreen())]),
-                  // Branch 2
                   StatefulShellBranch(routes: [GoRoute(path: '/news', builder: (context, state) => const NewsScreen())]),
-                  // Branch 3
                   StatefulShellBranch(routes: [GoRoute(path: AppConstants.routeSubscription, builder: (context, state) => const SubscriptionScreen())]),
-                  // Branch 4
                   StatefulShellBranch(routes: [
                     GoRoute(path: AppConstants.routeSettings, builder: (context, state) => const SettingsScreen(), routes: [
                       GoRoute(path: 'how-to-use', builder: (context, state) => const HowToUseScreen()),

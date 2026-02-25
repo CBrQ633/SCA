@@ -26,6 +26,7 @@ class _AdminNewsScreenState extends State<AdminNewsScreen> {
   }
 
   Future<void> _loadNews() async {
+    if (!mounted) return;
     setState(() => _isLoading = true);
     try {
       final news = await _repository.getAllAnnouncements();
@@ -36,11 +37,7 @@ class _AdminNewsScreenState extends State<AdminNewsScreen> {
         });
       }
     } catch (e) {
-      if (!mounted) return;
-      setState(() => _isLoading = false);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Error: $e')));
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -49,10 +46,7 @@ class _AdminNewsScreenState extends State<AdminNewsScreen> {
       await _repository.toggleActiveStatus(item.id, !item.isActive);
       _loadNews();
     } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Error: $e')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
     }
   }
 
@@ -60,17 +54,12 @@ class _AdminNewsScreenState extends State<AdminNewsScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Delete Announcement?'),
-        content: const Text('This action cannot be undone. Are you sure?'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Delete? / حذف', style: TextStyle(fontWeight: FontWeight.bold)),
+        content: const Text('Are you sure you want to delete this news?\nهل أنت متأكد من حذف هذا الخبر؟'),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Delete', style: TextStyle(color: Colors.red)),
-          ),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Delete', style: TextStyle(color: Colors.red))),
         ],
       ),
     );
@@ -80,10 +69,7 @@ class _AdminNewsScreenState extends State<AdminNewsScreen> {
         await _repository.deleteAnnouncement(id);
         _loadNews();
       } catch (e) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error: $e')));
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
       }
     }
   }
@@ -97,214 +83,89 @@ class _AdminNewsScreenState extends State<AdminNewsScreen> {
 
     showDialog(
       context: context,
+      barrierDismissible: false,
       builder: (ctx) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          title: Text(item == null ? 'إضافة خبر' : 'تعديل خبر'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: titleCtrl,
-                  decoration: const InputDecoration(labelText: 'العنوان'),
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: contentCtrl,
-                  decoration: const InputDecoration(labelText: 'المحتوى'),
-                  maxLines: 5,
-                ),
-                const SizedBox(height: 16),
-                // Expiry Date Picker
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.grey),
-                    borderRadius: BorderRadius.circular(8),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          title: Text(item == null ? 'New News / خبر جديد' : 'Edit News / تعديل خبر'),
+          content: SizedBox(
+            width: MediaQuery.of(context).size.width * 0.9,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: titleCtrl,
+                    decoration: const InputDecoration(labelText: 'Title / العنوان', filled: true, fillColor: Color(0xFFF1F5F9)),
                   ),
-                  child: Row(
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: contentCtrl,
+                    decoration: const InputDecoration(labelText: 'Content / المحتوى', filled: true, fillColor: Color(0xFFF1F5F9)),
+                    maxLines: 4,
+                  ),
+                  const SizedBox(height: 16),
+                  // Expiry
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(selectedExpiryDate == null ? 'Set Expiry (Optional)' : 'Expires: ${DateFormat('yyyy-MM-dd').format(selectedExpiryDate!)}', style: const TextStyle(fontSize: 13)),
+                    trailing: const Icon(Icons.calendar_month_rounded, color: Color(0xFF0F172A)),
+                    onTap: () async {
+                      final date = await showDatePicker(
+                        context: context,
+                        initialDate: DateTime.now().add(const Duration(days: 7)),
+                        firstDate: DateTime.now(),
+                        lastDate: DateTime.now().add(const Duration(days: 365)),
+                      );
+                      if (date != null) setDialogState(() => selectedExpiryDate = date);
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  // Image Picker
+                  const Align(alignment: Alignment.centerLeft, child: Text('Images / الصور', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
                     children: [
-                      Expanded(
-                        child: Text(
-                          selectedExpiryDate == null
-                              ? 'تاريخ انتهاء الصلاحية (اختياري)'
-                              : 'ينتهي في: ${DateFormat('yyyy-MM-dd').format(selectedExpiryDate!)}',
-                          style: TextStyle(
-                              color: selectedExpiryDate == null
-                                  ? Colors.grey
-                                  : Colors.black),
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.calendar_today,
-                            color: Colors.blue),
-                        onPressed: () async {
-                          final date = await showDatePicker(
-                            context: context,
-                            initialDate: selectedExpiryDate ??
-                                DateTime.now().add(const Duration(days: 3)),
-                            firstDate: DateTime.now(),
-                            lastDate:
-                                DateTime.now().add(const Duration(days: 365)),
-                          );
-                          if (date != null) {
-                            setDialogState(() => selectedExpiryDate = date);
+                      ...currentImageUrls.map((url) => _buildThumb(url: url, onRemove: () => setDialogState(() => currentImageUrls.remove(url)))),
+                      ...pickedImages.map((file) => _buildThumb(file: file, onRemove: () => setDialogState(() => pickedImages.remove(file)))),
+                      GestureDetector(
+                        onTap: () async {
+                          final picker = ImagePicker();
+                          final pickedFiles = await picker.pickMultiImage();
+                          if (pickedFiles.isNotEmpty) {
+                            setDialogState(() => pickedImages.addAll(pickedFiles.map((f) => File(f.path))));
                           }
                         },
+                        child: Container(height: 70, width: 70, decoration: BoxDecoration(color: Colors.grey[200], borderRadius: BorderRadius.circular(12)), child: const Icon(Icons.add_a_photo_rounded, color: Colors.blueGrey)),
                       ),
-                      if (selectedExpiryDate != null)
-                        IconButton(
-                          icon: const Icon(Icons.clear, color: Colors.red),
-                          onPressed: () =>
-                              setDialogState(() => selectedExpiryDate = null),
-                        ),
                     ],
                   ),
-                ),
-                const SizedBox(height: 16),
-                // Image Picker
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    ...currentImageUrls.map((url) => Stack(
-                          children: [
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(8),
-                              child: Image.network(url,
-                                  height: 80, width: 80, fit: BoxFit.cover),
-                            ),
-                            Positioned(
-                              right: 0,
-                              top: 0,
-                              child: GestureDetector(
-                                onTap: () {
-                                  setDialogState(() {
-                                    currentImageUrls.remove(url);
-                                  });
-                                },
-                                child: Container(
-                                  padding: const EdgeInsets.all(2),
-                                  decoration: const BoxDecoration(
-                                      color: Colors.red,
-                                      shape: BoxShape.circle),
-                                  child: const Icon(Icons.close,
-                                      size: 14, color: Colors.white),
-                                ),
-                              ),
-                            ),
-                          ],
-                        )),
-                    ...pickedImages.map((file) => Stack(
-                          children: [
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(8),
-                              child: Image.file(file,
-                                  height: 80, width: 80, fit: BoxFit.cover),
-                            ),
-                            Positioned(
-                              right: 0,
-                              top: 0,
-                              child: GestureDetector(
-                                onTap: () {
-                                  setDialogState(() {
-                                    pickedImages.remove(file);
-                                  });
-                                },
-                                child: Container(
-                                  padding: const EdgeInsets.all(2),
-                                  decoration: const BoxDecoration(
-                                      color: Colors.red,
-                                      shape: BoxShape.circle),
-                                  child: const Icon(Icons.close,
-                                      size: 14, color: Colors.white),
-                                ),
-                              ),
-                            ),
-                          ],
-                        )),
-                    GestureDetector(
-                      onTap: () async {
-                        final picker = ImagePicker();
-                        final pickedFiles = await picker.pickMultiImage();
-                        if (pickedFiles.isNotEmpty) {
-                          setDialogState(() {
-                            pickedImages
-                                .addAll(pickedFiles.map((f) => File(f.path)));
-                          });
-                        }
-                      },
-                      child: Container(
-                        height: 80,
-                        width: 80,
-                        decoration: BoxDecoration(
-                          color: Colors.grey[200],
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.grey),
-                        ),
-                        child: const Icon(Icons.add_a_photo,
-                            size: 30, color: Colors.grey),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+                ],
+              ),
             ),
           ),
           actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancel'),
-            ),
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
             ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0F172A), foregroundColor: Colors.white),
               onPressed: () async {
-                final title = titleCtrl.text.trim();
-                final content = contentCtrl.text.trim();
-
-                if (title.isEmpty || content.isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('برجاء ملء جميع الحقول')),
-                  );
-                  return;
-                }
-
-                Navigator.pop(ctx); // Close dialog
-
-                final messenger = ScaffoldMessenger.of(context);
+                if (titleCtrl.text.isEmpty || contentCtrl.text.isEmpty) return;
+                Navigator.pop(ctx);
                 try {
                   if (item == null) {
-                    // Add
                     final user = context.read<AuthProvider>().currentUser;
-                    if (user == null) {
-                      throw Exception('Admin user session not found');
-                    }
-                    await _repository.createAnnouncement(
-                      title: title,
-                      content: content,
-                      createdBy: user.id,
-                      expiryDate: selectedExpiryDate,
-                      imageFiles: pickedImages,
-                    );
+                    await _repository.createAnnouncement(title: titleCtrl.text, content: contentCtrl.text, createdBy: user!.id, expiryDate: selectedExpiryDate, imageFiles: pickedImages);
                   } else {
-                    // Update
-                    await _repository.updateAnnouncement(
-                      id: item.id,
-                      title: title,
-                      content: content,
-                      expiryDate: selectedExpiryDate,
-                      imageFiles: pickedImages,
-                      existingImageUrls: currentImageUrls,
-                    );
+                    await _repository.updateAnnouncement(id: item.id, title: titleCtrl.text, content: contentCtrl.text, expiryDate: selectedExpiryDate, imageFiles: pickedImages, existingImageUrls: currentImageUrls);
                   }
                   _loadNews();
                 } catch (e) {
-                  messenger.showSnackBar(
-                    SnackBar(content: Text('Error: $e')),
-                  );
+                  if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
                 }
               },
-              child: Text(item == null ? 'Create' : 'Save'),
+              child: const Text('Publish / نشر'),
             ),
           ],
         ),
@@ -312,90 +173,59 @@ class _AdminNewsScreenState extends State<AdminNewsScreen> {
     );
   }
 
+  Widget _buildThumb({String? url, File? file, required VoidCallback onRemove}) {
+    return Stack(
+      children: [
+        ClipRRect(borderRadius: BorderRadius.circular(10), child: url != null ? Image.network(url, height: 70, width: 70, fit: BoxFit.cover) : Image.file(file!, height: 70, width: 70, fit: BoxFit.cover)),
+        Positioned(right: 0, top: 0, child: GestureDetector(onTap: onRemove, child: Container(padding: const EdgeInsets.all(2), decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle), child: const Icon(Icons.close, size: 12, color: Colors.white)))),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    const navy = Color(0xFF0F172A);
     return Scaffold(
-      appBar: AppBar(title: const Text('Manage News')),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _showAddEditDialog(),
-        child: const Icon(Icons.add),
-      ),
-      body: _isLoading
+      backgroundColor: const Color(0xFFF8FAFC),
+      appBar: AppBar(title: const Text('Manage News / إدارة الأخبار', style: TextStyle(fontWeight: FontWeight.bold)), backgroundColor: Colors.white, elevation: 0),
+      floatingActionButton: FloatingActionButton(backgroundColor: navy, onPressed: () => _showAddEditDialog(), child: const Icon(Icons.add_rounded, color: Colors.white)),
+      body: _isLoading 
           ? const Center(child: CircularProgressIndicator())
-          : _announcements.isEmpty
-              ? const Center(child: Text('No announcements found.'))
-              : ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: _announcements.length,
-                  itemBuilder: (context, index) {
-                    final item = _announcements[index];
-                    return Card(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      child: Column(
-                        children: [
-                          if (item.imageUrls.isNotEmpty)
-                            ClipRRect(
-                              borderRadius: const BorderRadius.vertical(
-                                  top: Radius.circular(12)),
-                              child: SizedBox(
-                                height: 150,
-                                child: ListView.builder(
-                                  scrollDirection: Axis.horizontal,
-                                  itemCount: item.imageUrls.length,
-                                  itemBuilder: (context, i) => Image.network(
-                                    item.imageUrls[i],
-                                    height: 150,
-                                    width: MediaQuery.of(context).size.width -
-                                        64, // Full width minus padding
-                                    fit: BoxFit.cover,
-                                    errorBuilder:
-                                        (context, error, stackTrace) =>
-                                            const SizedBox.shrink(),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ListTile(
-                            title: Text(
-                              item.title,
-                              style: const TextStyle(
-                                  fontWeight: FontWeight.bold, fontSize: 16),
-                            ),
-                            subtitle: Text(
-                              '${DateFormat('yyyy-MM-dd').format(item.createdAt)} • ${item.isActive ? "نشط" : "غير نشط"}',
-                            ),
-                            trailing: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                IconButton(
-                                  icon: Icon(
-                                    item.isActive
-                                        ? Icons.visibility
-                                        : Icons.visibility_off,
-                                    color: item.isActive
-                                        ? Colors.green
-                                        : Colors.grey,
-                                  ),
-                                  onPressed: () => _toggleStatus(item),
-                                ),
-                                IconButton(
-                                  icon: const Icon(Icons.edit,
-                                      color: Colors.blue),
-                                  onPressed: () => _showAddEditDialog(item),
-                                ),
-                                IconButton(
-                                  icon: const Icon(Icons.delete,
-                                      color: Colors.red),
-                                  onPressed: () => _deleteItem(item.id),
-                                ),
-                              ],
-                            ),
+          : RefreshIndicator(
+              onRefresh: _loadNews,
+              child: ListView.builder(
+                padding: const EdgeInsets.all(16),
+                itemCount: _announcements.length,
+                itemBuilder: (context, index) {
+                  final item = _announcements[index];
+                  return Card(
+                    margin: const EdgeInsets.only(bottom: 16),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                    child: Column(
+                      children: [
+                        if (item.imageUrls.isNotEmpty)
+                          ClipRRect(
+                            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                            child: Image.network(item.imageUrls.first, height: 150, width: double.infinity, fit: BoxFit.cover, errorBuilder: (c,e,s) => const SizedBox.shrink()),
                           ),
-                        ],
-                      ),
-                    );
-                  },
-                ),
+                        ListTile(
+                          title: Text(item.title, style: const TextStyle(fontWeight: FontWeight.bold, color: navy)),
+                          subtitle: Text('${DateFormat('MMMd').format(item.createdAt)} • ${item.isActive ? "Active" : "Hidden"}'),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(icon: Icon(item.isActive ? Icons.visibility_rounded : Icons.visibility_off_rounded, color: item.isActive ? Colors.green : Colors.grey), onPressed: () => _toggleStatus(item)),
+                              IconButton(icon: const Icon(Icons.edit_rounded, color: Colors.blue), onPressed: () => _showAddEditDialog(item)),
+                              IconButton(icon: const Icon(Icons.delete_rounded, color: Colors.redAccent), onPressed: () => _deleteItem(item.id)),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
     );
   }
 }

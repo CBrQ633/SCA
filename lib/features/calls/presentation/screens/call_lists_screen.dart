@@ -1,7 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:animate_do/animate_do.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_speed_dial/flutter_speed_dial.dart';
 import 'package:file_picker/file_picker.dart';
@@ -22,171 +21,75 @@ class _CallListsScreenState extends State<CallListsScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<CallsProvider>().loadLists();
-    });
+    // Load lists only once on init
+    Future.microtask(() => context.read<CallsProvider>().loadLists());
   }
 
   Future<void> _handleImport(String mode) async {
     final callsProvider = context.read<CallsProvider>();
-    final authProvider = context.read<AuthProvider>();
-    final userId = authProvider.currentUser?.id;
-
+    final userId = context.read<AuthProvider>().currentUser?.id;
     if (userId == null) return;
 
     try {
       if (mode == 'excel') {
-        FilePickerResult? result = await FilePicker.platform.pickFiles(
-          type: FileType.custom,
-          allowedExtensions: ['xlsx', 'xls'],
-        );
-        if (result == null) return;
-
-        final file = File(result.files.single.path!);
-        await callsProvider.importFromExcel(file, userId);
-      } else if (mode == 'image') {
-        final picker = ImagePicker();
-        final pickedFile = await picker.pickImage(source: ImageSource.gallery);
-        if (pickedFile == null) return;
-
-        final file = File(pickedFile.path);
-        // Note: You might want to move OCR logic to provider too if not already there
-        // For now, let's assume the provider handles the main flow
-        AppNotifications.showInfo(context, 'Processing image... / جاري معالجة الصورة');
-        // implementation for image import can be added to CallsProvider similarly
+        FilePickerResult? result = await FilePicker.platform.pickFiles(type: FileType.custom, allowedExtensions: ['xlsx', 'xls']);
+        if (result != null) {
+          await callsProvider.importFromExcel(File(result.files.single.path!), userId);
+        }
       }
-
       if (callsProvider.errorMessage != null) {
         if (mounted) AppNotifications.showError(context, callsProvider.errorMessage!);
         callsProvider.clearError();
-      } else {
-        if (mounted) AppNotifications.showSuccess(context, 'Done! / تم بنجاح');
       }
     } catch (e) {
       if (mounted) AppNotifications.showError(context, 'Error: $e');
     }
   }
 
-  Future<void> _showCreateListDialog() async {
-    final controller = TextEditingController();
-    await showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('New Call List / قائمة جديدة'),
-        content: TextField(
-          controller: controller,
-          decoration: const InputDecoration(hintText: 'List Name / اسم القائمة'),
-          autofocus: true,
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-          ElevatedButton(
-            onPressed: () async {
-              if (controller.text.trim().isNotEmpty) {
-                final name = controller.text.trim();
-                Navigator.pop(context);
-                final userId = context.read<AuthProvider>().currentUser?.id;
-                if (userId != null) {
-                  await context.read<CallsProvider>().createEmptyList(name, userId);
-                }
-              }
-            },
-            child: const Text('Create'),
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
+    const navy = Color(0xFF0F172A);
+
     return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
-        title: const Text('My Call Lists / قوائم الاتصال'),
+        title: const Text('My Call Lists / قوائم الاتصال', style: TextStyle(fontWeight: FontWeight.bold)),
+        backgroundColor: Colors.white,
+        elevation: 0,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () => context.read<CallsProvider>().loadLists(),
-          ),
+          IconButton(icon: const Icon(Icons.refresh_rounded, color: navy), onPressed: () => context.read<CallsProvider>().loadLists()),
         ],
       ),
       body: Consumer<CallsProvider>(
         builder: (context, provider, child) {
-          if (provider.isLoading) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
+          if (provider.isLoading) return const Center(child: CircularProgressIndicator());
           if (provider.lists.isEmpty) {
-            return const Center(
+            return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.list_alt, size: 64, color: Colors.grey),
-                  SizedBox(height: 16),
-                  Text('No call lists yet / لا توجد قوائم بعد'),
-                  SizedBox(height: 24),
-                  Text('Try importing from Excel below / جرب استيراد ملف اكسيل'),
+                  const Icon(Icons.contact_phone_outlined, size: 64, color: Colors.grey),
+                  const SizedBox(height: 16),
+                  const Text('No call lists yet / لا توجد قوائم', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
                 ],
               ),
             );
           }
 
           return ListView.builder(
+            padding: const EdgeInsets.all(16),
             itemCount: provider.lists.length,
             itemBuilder: (context, index) {
               final list = provider.lists[index];
-              return FadeInUp(
-                duration: const Duration(milliseconds: 400),
-                delay: Duration(milliseconds: 100 * index),
-                child: Dismissible(
-                  key: Key(list.id),
-                  direction: DismissDirection.endToStart,
-                  background: Container(
-                    alignment: Alignment.centerRight,
-                    padding: const EdgeInsets.only(right: 20),
-                    margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: Colors.red,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(Icons.delete, color: Colors.white),
-                  ),
-                  confirmDismiss: (direction) async {
-                    return await showDialog<bool>(
-                      context: context,
-                      builder: (context) => AlertDialog(
-                        title: const Text('Delete List / حذف القائمة'),
-                        content: Text('Are you sure you want to delete "${list.name}"?\nهل أنت متأكد من حذف هذه القائمة؟'),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(context, false),
-                            child: const Text('Cancel / إلغاء'),
-                          ),
-                          TextButton(
-                            onPressed: () => Navigator.pop(context, true),
-                            style: TextButton.styleFrom(foregroundColor: Colors.red),
-                            child: const Text('Delete / حذف'),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                  onDismissed: (direction) async {
-                    await provider.deleteList(list.id);
-                  },
-                  child: Card(
-                    margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    child: ListTile(
-                      leading: CircleAvatar(
-                        backgroundColor: Theme.of(context).colorScheme.primary,
-                        child: Text(list.name.isNotEmpty ? list.name[0].toUpperCase() : '?'),
-                      ),
-                      title: Text(list.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-                      subtitle: Text('${list.status} • ${list.createdAt.toLocal().toString().substring(0, 10)}'),
-                      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                      onTap: () => context.push('${AppConstants.routeHome}/${list.id}'),
-                    ),
-                  ),
+              return Card(
+                margin: const EdgeInsets.only(bottom: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                child: ListTile(
+                  leading: CircleAvatar(backgroundColor: navy, child: const Icon(Icons.list_rounded, color: Colors.white)),
+                  title: Text(list.name, style: const TextStyle(fontWeight: FontWeight.bold, color: navy)),
+                  subtitle: Text(list.status, style: const TextStyle(fontSize: 12)),
+                  trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 16, color: Colors.grey),
+                  onTap: () => context.push('${AppConstants.routeHome}/${list.id}'),
                 ),
               );
             },
@@ -194,28 +97,15 @@ class _CallListsScreenState extends State<CallListsScreen> {
         },
       ),
       floatingActionButton: SpeedDial(
-        icon: Icons.add,
-        activeIcon: Icons.close,
-        backgroundColor: Theme.of(context).colorScheme.primary,
-        foregroundColor: Theme.of(context).colorScheme.onPrimary,
+        icon: Icons.add_rounded,
+        activeIcon: Icons.close_rounded,
+        backgroundColor: const Color(0xFF10B981),
+        foregroundColor: Colors.white,
         overlayColor: Colors.black,
-        overlayOpacity: 0.5,
+        overlayOpacity: 0.4,
         children: [
-          SpeedDialChild(
-            child: const Icon(Icons.edit_note),
-            label: 'قائمة فارغة / Empty List',
-            onTap: _showCreateListDialog,
-          ),
-          SpeedDialChild(
-            child: const Icon(Icons.upload_file),
-            label: 'استيراد من اكسيل / Import Excel',
-            onTap: () => _handleImport('excel'),
-          ),
-          SpeedDialChild(
-            child: const Icon(Icons.camera_alt),
-            label: 'سحب من صورة / OCR Import',
-            onTap: () => _handleImport('image'),
-          ),
+          SpeedDialChild(child: const Icon(Icons.upload_file_rounded), label: 'Import Excel', onTap: () => _handleImport('excel')),
+          SpeedDialChild(child: const Icon(Icons.camera_alt_rounded), label: 'OCR Import', onTap: () => _handleImport('image')),
         ],
       ),
     );

@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:animate_do/animate_do.dart';
 import 'package:smart_call_assistant/features/auth/data/auth_repository.dart';
 import 'package:smart_call_assistant/features/calls/data/calls_repository.dart';
 import 'package:smart_call_assistant/features/subscription/data/subscription_repository.dart';
 import 'package:smart_call_assistant/core/components/app_logo.dart';
+import 'package:go_router/go_router.dart';
+import 'package:smart_call_assistant/core/constants/app_constants.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -29,6 +30,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   }
 
   Future<void> _loadStats() async {
+    if (!mounted) return;
     setState(() => _isLoading = true);
     try {
       final results = await Future.wait([
@@ -39,9 +41,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
       if (mounted) {
         setState(() {
-          _totalUsers = results[0];
-          _callsToday = results[1];
-          _pendingSubs = results[2];
+          _totalUsers = results[0] as int;
+          _callsToday = results[1] as int;
+          _pendingSubs = results[2] as int;
           _isLoading = false;
         });
       }
@@ -52,223 +54,112 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    const navy = Color(0xFF0F172A);
+    const emerald = Color(0xFF10B981);
 
     return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
+      backgroundColor: const Color(0xFFF1F5F9),
       appBar: AppBar(
-        title: const Text('Admin Central / لوحة التحكم'),
-        leading: const Padding(
-          padding: EdgeInsets.all(8.0),
-          child: AppLogo(size: 30, showText: false),
-        ),
+        title: const Text('Admin Central', style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 0.5)),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        centerTitle: true,
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh_rounded),
+            icon: const Icon(Icons.sync_rounded, color: navy),
             onPressed: _loadStats,
           ),
         ],
       ),
-      body: _isLoading
+      body: _isLoading 
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
               onRefresh: _loadStats,
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    FadeInDown(
-                      child: Text(
-                        'System Statistics / إحصائيات النظام',
-                        style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold, color: Colors.grey[700]),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    _buildMainStats(theme),
-                    const SizedBox(height: 32),
-                    FadeInUp(
-                      child: _buildQuickActions(theme),
-                    ),
-                    const SizedBox(height: 32),
-                    _buildActivitySummary(theme),
-                  ],
-                ),
+              child: ListView(
+                padding: const EdgeInsets.all(24),
+                children: [
+                  const Center(child: AppLogo(size: 60, showText: false)),
+                  const SizedBox(height: 40),
+                  
+                  Row(
+                    children: [
+                      Expanded(child: _buildStatCard('Accounts', _totalUsers.toString(), Icons.supervised_user_circle_outlined, navy)),
+                      const SizedBox(width: 16),
+                      Expanded(child: _buildStatCard('Performance', _callsToday.toString(), Icons.rocket_launch_outlined, emerald)),
+                    ],
+                  ),
+                  
+                  const SizedBox(height: 40),
+                  const Text('CORE OPERATIONS', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: Colors.blueGrey, letterSpacing: 1.5)),
+                  const SizedBox(height: 16),
+                  
+                  _buildActionTile(
+                    title: 'Subscription Requests',
+                    subtitle: 'Review payments and activation',
+                    icon: Icons.auto_awesome_mosaic_outlined,
+                    color: Colors.orange,
+                    onTap: () => context.push(AppConstants.routeAdminSubscriptions),
+                  ),
+                  const SizedBox(height: 12),
+                  _buildActionTile(
+                    title: 'User Management',
+                    subtitle: 'Roles and access control',
+                    icon: Icons.shield_moon_outlined,
+                    color: navy,
+                    onTap: () => context.push(AppConstants.routeAdminUsers),
+                  ),
+                  const SizedBox(height: 12),
+                  _buildActionTile(
+                    title: 'News Center',
+                    subtitle: 'Broadcast global updates',
+                    icon: Icons.dashboard_customize_outlined,
+                    color: emerald,
+                    onTap: () => context.push('/admin/news'),
+                  ),
+                ],
               ),
             ),
     );
   }
 
-  Widget _buildMainStats(ThemeData theme) {
-    return Column(
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: FadeInLeft(
-                child: _StatCard(
-                  title: 'Total Users / المستخدمين',
-                  value: _totalUsers.toString(),
-                  icon: Icons.people_alt_rounded,
-                  color: theme.colorScheme.primary,
-                ),
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: FadeInRight(
-                child: _StatCard(
-                  title: 'Calls Today / اتصالات اليوم',
-                  value: _callsToday.toString(),
-                  icon: Icons.call_made_rounded,
-                  color: theme.colorScheme.secondary,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildQuickActions(ThemeData theme) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Pending Tasks / مهام معلقة',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 12),
-        _ActionTile(
-          title: 'Approve Subscriptions / تفعيل الاشتراكات',
-          subtitle: '$_pendingSubs pending requests / طلبات بانتظار الموافقة',
-          icon: Icons.verified_user_rounded,
-          color: Colors.orangeAccent,
-          badge: _pendingSubs > 0 ? _pendingSubs : null,
-          onTap: () {
-            // Navigate to Subscription Management
-          },
-        ),
-        const SizedBox(height: 12),
-        _ActionTile(
-          title: 'User Management / إدارة المستخدمين',
-          subtitle: 'View and manage all users / عرض وإدارة الأعضاء',
-          icon: Icons.admin_panel_settings_rounded,
-          color: theme.colorScheme.primary,
-          onTap: () {
-            // Navigate to User Management
-          },
-        ),
-      ],
-    );
-  }
-
-  Widget _buildActivitySummary(ThemeData theme) {
-    return FadeInUp(
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          color: theme.colorScheme.primary.withOpacity(0.05),
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: theme.colorScheme.primary.withOpacity(0.1)),
-        ),
-        child: Column(
-          children: [
-            const Icon(Icons.auto_graph_rounded, size: 40, color: Colors.grey),
-            const SizedBox(height: 12),
-            Text(
-              'System Activity is Stable / حالة النظام مستقرة',
-              style: TextStyle(color: theme.colorScheme.primary, fontWeight: FontWeight.bold),
-            ),
-            const Text(
-              'All services are running smoothly.',
-              style: TextStyle(color: Colors.grey, fontSize: 12),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _StatCard extends StatelessWidget {
-  final String title;
-  final String value;
-  final IconData icon;
-  final Color color;
-
-  const _StatCard({required this.title, required this.value, required this.icon, required this.color});
-
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildStatCard(String title, String value, IconData icon, Color color) {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.black.withOpacity(0.05)),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 5))],
+        color: Colors.white, 
+        borderRadius: BorderRadius.circular(28), 
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 20, offset: const Offset(0, 10))]
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
-            child: Icon(icon, color: color, size: 22),
-          ),
-          const SizedBox(height: 16),
-          Text(value, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
-          Text(title, style: TextStyle(color: Colors.grey[600], fontSize: 11, fontWeight: FontWeight.w600)),
+          Icon(icon, color: color, size: 22),
+          const SizedBox(height: 20),
+          Text(value, style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w900, color: Color(0xFF0F172A), letterSpacing: -1)),
+          Text(title, style: const TextStyle(color: Colors.grey, fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 0.5)),
         ],
       ),
     );
   }
-}
 
-class _ActionTile extends StatelessWidget {
-  final String title;
-  final String subtitle;
-  final IconData icon;
-  final Color color;
-  final int? badge;
-  final VoidCallback onTap;
-
-  const _ActionTile({required this.title, required this.subtitle, required this.icon, required this.color, this.badge, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildActionTile({required String title, required String subtitle, required IconData icon, required Color color, required VoidCallback onTap}) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.black.withOpacity(0.05)),
+        color: Colors.white, 
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.black.withOpacity(0.03)),
       ),
       child: ListTile(
         onTap: onTap,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
         leading: Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(color: color.withOpacity(0.1), shape: BoxShape.circle),
-          child: Icon(icon, color: color),
+          padding: const EdgeInsets.all(12), 
+          decoration: BoxDecoration(color: color.withOpacity(0.08), shape: BoxShape.circle), 
+          child: Icon(icon, color: color, size: 20)
         ),
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-        subtitle: Text(subtitle, style: const TextStyle(fontSize: 12)),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (badge != null)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                decoration: BoxDecoration(color: Colors.redAccent, borderRadius: BorderRadius.circular(12)),
-                child: Text(badge.toString(), style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
-              ),
-            const SizedBox(width: 8),
-            const Icon(Icons.chevron_right_rounded, color: Colors.grey),
-          ],
-        ),
+        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: Color(0xFF0F172A))),
+        subtitle: Text(subtitle, style: const TextStyle(fontSize: 12, color: Colors.blueGrey)),
+        trailing: const Icon(Icons.arrow_forward_rounded, color: Colors.black12, size: 18),
       ),
     );
   }

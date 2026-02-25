@@ -13,7 +13,8 @@ class AuthProvider with ChangeNotifier, WidgetsBindingObserver {
   UserModel? _currentUser;
   bool _isLoading = false;
   String? _errorMessage;
-  Timer? _sessionCheckTimer;
+  
+  // Removed the periodic timer that caused redirects/lag
 
   UserModel? get currentUser => _currentUser;
   bool get isLoading => _isLoading;
@@ -25,35 +26,25 @@ class AuthProvider with ChangeNotifier, WidgetsBindingObserver {
     _initializeAuth();
     _listenToAuthStateChanges();
     WidgetsBinding.instance.addObserver(this);
-    _startSessionCheckTimer();
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
-      refreshUser();
+    // Only refresh when the user returns to the app to check session validity
+    if (state == AppLifecycleState.resumed && isAuthenticated) {
+      refreshUser(silent: true);
     }
-  }
-
-  void _startSessionCheckTimer() {
-    _sessionCheckTimer?.cancel();
-    _sessionCheckTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
-      if (isAuthenticated) {
-        refreshUser();
-      }
-    });
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _sessionCheckTimer?.cancel();
     super.dispose();
   }
 
   Future<void> _initializeAuth() async {
     if (_authRepository.hasSession) {
-      await refreshUser();
+      await refreshUser(silent: true);
     }
   }
 
@@ -78,72 +69,72 @@ class AuthProvider with ChangeNotifier, WidgetsBindingObserver {
     return deviceId;
   }
 
-  // Added missing register method
   Future<bool> register({
     required String email,
     required String password,
     required String fullName,
   }) async {
-    _isLoading = true;
+    _setLoading(true);
     _errorMessage = null;
-    notifyListeners();
 
     try {
-      _currentUser = await _authRepository.register(
+      await _authRepository.register(
         email: email,
         password: password,
         fullName: fullName,
       );
-      _isLoading = false;
-      notifyListeners();
+      _setLoading(false);
       return true;
+    } on AuthException catch (e) {
+      _errorMessage = _mapAuthError(e.message);
+      _setLoading(false);
+      return false;
     } catch (e) {
-      _errorMessage = e.toString();
-      _isLoading = false;
-      notifyListeners();
+      _errorMessage = "حدث خطأ غير متوقع أثناء التسجيل";
+      _setLoading(false);
       return false;
     }
   }
 
   Future<bool> login({required String email, required String password}) async {
-    _isLoading = true;
+    if (_isLoading) return false;
+    _setLoading(true);
     _errorMessage = null;
-    notifyListeners();
 
     try {
       final user = await _authRepository.login(email: email, password: password);
       final deviceId = await _getOrCreateDeviceId();
-
       await _authRepository.updateUserDeviceId(user.id, deviceId);
-
+      
       await refreshUser();
-      _isLoading = false;
-      notifyListeners();
+      _setLoading(false);
       return true;
+    } on AuthException catch (e) {
+      _errorMessage = _mapAuthError(e.message);
+      _setLoading(false);
+      return false;
     } catch (e) {
-      _errorMessage = e.toString();
-      _isLoading = false;
-      notifyListeners();
+      _errorMessage = "بيانات الدخول غير صحيحة أو الحساب غير موجود";
+      _setLoading(false);
       return false;
     }
   }
 
-  Future<void> refreshUser() async {
+  Future<void> refreshUser({bool silent = false}) async {
     try {
       final user = await _authRepository.getCurrentUserProfile();
       if (user != null) {
         final localDeviceId = await _getOrCreateDeviceId();
-
+        
         if (user.currentDeviceId != null && user.currentDeviceId != localDeviceId) {
-          foundation.debugPrint('Security: Unauthorized device detected. Logging out.');
-          _errorMessage = 'تم تسجيل الدخول من جهاز آخر. (Logged in from another device)';
-          notifyListeners();
+          _errorMessage = 'تم تسجيل الدخول من جهاز آخر';
+          if (!silent) notifyListeners();
           await logout();
           return;
         }
 
         _currentUser = user;
-        notifyListeners();
+        if (!silent) notifyListeners();
       }
     } catch (e) {
       foundation.debugPrint('Session Refresh Error: $e');
@@ -159,6 +150,24 @@ class AuthProvider with ChangeNotifier, WidgetsBindingObserver {
       _errorMessage = e.toString();
       notifyListeners();
     }
+  }
+
+  void _setLoading(bool value) {
+    _isLoading = value;
+    notifyListeners();
+  }
+
+  String _mapAuthError(String message) {
+    if (message.contains('Invalid login credentials')) {
+      return "البريد الإلكتروني أو كلمة المرور غير صحيحة";
+    } else if (message.contains('Email not confirmed')) {
+      return "يرجى تأكيد البريد الإلكتروني أولاً";
+    } else if (message.contains('User already registered')) {
+      return "هذا البريد مسجل بالفعل، يمكنك تسجيل الدخول";
+    } else if (message.contains('Password should be')) {
+      return "كلمة المرور ضعيفة جداً";
+    }
+    return "فشل في العملية: $message";
   }
 
   void clearError() {
