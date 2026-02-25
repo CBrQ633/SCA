@@ -71,6 +71,44 @@ class NewsRepository {
     }
   }
 
+  // ✅ Added missing updateAnnouncement method
+  Future<void> updateAnnouncement({
+    required String id,
+    required String title,
+    required String content,
+    DateTime? expiryDate,
+    List<File>? imageFiles,
+    List<String>? existingImageUrls,
+  }) async {
+    try {
+      List<String> imageUrls = existingImageUrls ?? [];
+      
+      // Upload new images if any
+      if (imageFiles != null && imageFiles.isNotEmpty) {
+        for (var imageFile in imageFiles) {
+          final fileName = 'news_upd_${DateTime.now().millisecondsSinceEpoch}_${imageFiles.indexOf(imageFile)}';
+          try {
+            await _supabase.storage.from('news_images').upload(fileName, imageFile);
+            imageUrls.add(_supabase.storage.from('news_images').getPublicUrl(fileName));
+          } catch (e) {
+            debugPrint('Image update upload failed: $e');
+          }
+        }
+      }
+
+      await _supabase.from('news_announcements').update({
+        'title': title,
+        'title_ar': title,
+        'content': content,
+        'content_ar': content,
+        'image_urls': imageUrls,
+        'expiry_date': expiryDate?.toIso8601String(),
+      }).eq('id', id);
+    } catch (e) {
+      throw Exception('خطأ في تحديث الخبر: $e');
+    }
+  }
+
   Future<void> toggleActiveStatus(String id, bool isActive) async {
     await _supabase.from('news_announcements').update({'is_active': isActive}).eq('id', id);
   }
