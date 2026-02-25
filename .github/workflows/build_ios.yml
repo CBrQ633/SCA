@@ -20,21 +20,21 @@ jobs:
       - name: Install Dependencies
         run: flutter pub get
 
-      - name: Setup CocoaPods
+      - name: Clean iOS Build Folder
         run: |
           cd ios
-          pod install --repo-update
+          rm -rf Pods
+          rm -rf build
+          rm -f Podfile.lock
+          rm -f Flutter/Generated.xcconfig
+          rm -f Flutter/flutter_export_environment.sh
           cd ..
 
-      - name: Clean Build Config
-        run: |
-          rm -rf build
-          flutter clean
-
-      - name: Get Pub Packages again
+      - name: Get Pub Packages
         run: flutter pub get
 
-      - name: Build iOS Frameworks (Critical Fix)
+      - name: Build iOS (No Codesign)
+        # Note: Flutter build ios will automatically run pod install correctly
         run: flutter build ios --release --no-codesign
 
       - name: Create IPA (Standard Method)
