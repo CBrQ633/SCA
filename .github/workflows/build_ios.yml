@@ -17,24 +17,24 @@ jobs:
           channel: "stable"
           cache: true
 
-      - name: Install Dependencies
+      - name: Force Clean Local Configs
+        run: |
+          # مسح أي ملفات إعدادات قد تكون تسللت من الويندوز
+          rm -f ios/Flutter/Generated.xcconfig
+          rm -f ios/Flutter/flutter_export_environment.sh
+          rm -rf ios/Pods
+          rm -rf build
+
+      - name: Get Dependencies
         run: flutter pub get
 
-      - name: Clean iOS Build Folder
+      - name: Install Pods
         run: |
           cd ios
-          rm -rf Pods
-          rm -rf build
-          rm -f Podfile.lock
-          rm -f Flutter/Generated.xcconfig
-          rm -f Flutter/flutter_export_environment.sh
+          pod install --repo-update
           cd ..
 
-      - name: Get Pub Packages
-        run: flutter pub get
-
       - name: Build iOS (No Codesign)
-        # Note: Flutter build ios will automatically run pod install correctly
         run: flutter build ios --release --no-codesign
 
       - name: Create IPA (Standard Method)
