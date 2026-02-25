@@ -92,6 +92,11 @@ class CallEntry {
       position: json['position'] as int? ?? 0,
     );
   }
+
+  // ✅ Added missing getters for ExcelService
+  bool get isPending => status == 'pending';
+  bool get isAnswered => status == 'answered';
+  bool get isNotAnswered => status == 'not_answered';
 }
 
 class NewsAnnouncement {
