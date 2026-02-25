@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'package:intl/intl.dart';
 import 'package:smart_call_assistant/core/constants/app_constants.dart';
 import 'package:smart_call_assistant/features/auth/data/user_model.dart';
 import 'package:smart_call_assistant/core/utils/app_notifications.dart';
@@ -75,31 +76,50 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Status Card
             Container(
               padding: const EdgeInsets.all(20),
+              width: double.infinity,
               decoration: BoxDecoration(
                 color: isActive ? const Color(0xFFD1FAE5) : (isPending ? const Color(0xFFFEF3C7) : const Color(0xFFFEE2E2)),
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(color: isActive ? const Color(0xFF10B981) : (isPending ? Colors.amber : Colors.redAccent)),
               ),
-              child: Row(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(isActive ? Icons.verified : (isPending ? Icons.timer : Icons.error_outline), color: isActive ? Colors.green : (isPending ? Colors.orange : Colors.red)),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      isActive ? 'Active / نشط' : (isPending ? 'Pending / قيد المراجعة' : 'Inactive / غير نشط'),
-                      style: const TextStyle(fontWeight: FontWeight.bold, color: textNavy),
-                    ),
+                  Row(
+                    children: [
+                      Icon(isActive ? Icons.verified : (isPending ? Icons.timer : Icons.error_outline), color: isActive ? Colors.green : (isPending ? Colors.orange : Colors.red)),
+                      const SizedBox(width: 12),
+                      Text(
+                        isActive ? 'Account Active / الحساب نشط' : (isPending ? 'Pending Review / قيد المراجعة' : 'Inactive / غير نشط'),
+                        style: const TextStyle(fontWeight: FontWeight.bold, color: textNavy, fontSize: 16),
+                      ),
+                    ],
                   ),
+                  if (isActive && user?.subscriptionEnd != null) ...[
+                    const SizedBox(height: 12),
+                    Text(
+                      'Expires on: ${DateFormat('yyyy-MM-dd').format(user!.subscriptionEnd!)}',
+                      style: TextStyle(color: textNavy.withOpacity(0.7), fontWeight: FontWeight.w600),
+                    ),
+                    Text(
+                      'ينتهي في: ${DateFormat('yyyy-MM-dd').format(user.subscriptionEnd!)}',
+                      style: TextStyle(color: textNavy.withOpacity(0.7), fontSize: 12),
+                    ),
+                  ]
                 ],
               ),
             ),
+            
             const SizedBox(height: 32),
+            const Text('Renew or Upgrade / تجديد أو ترقية', style: TextStyle(fontWeight: FontWeight.bold, color: textNavy, fontSize: 15)),
+            const SizedBox(height: 16),
 
-            if (!isActive && !isPending) ...[
+            if (!isPending) ...[
               // Payment Info
               _buildSectionCard([
                 _buildPaymentRow('Vodafone Cash', vodafoneCash, Colors.red),
@@ -137,13 +157,20 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                   child: _isLoading ? const CircularProgressIndicator(color: Colors.white) : const Text('SUBMIT / إرسال الطلب', style: TextStyle(fontWeight: FontWeight.bold)),
                 ),
               ),
-            ] else if (isPending) ...[
-              const SizedBox(height: 40),
-              const Icon(Icons.mark_email_read_rounded, size: 80, color: Colors.orange),
-              const SizedBox(height: 16),
-              const Text('We are checking your payment.\nسوف نقوم بتفعيل حسابك فور التأكد.', textAlign: TextAlign.center, style: TextStyle(color: textNavy, fontWeight: FontWeight.w600)),
-              const SizedBox(height: 32),
-              OutlinedButton(onPressed: () => context.read<AuthProvider>().refreshUser(), child: const Text('Refresh / تحديث')),
+            ] else ...[
+              const Center(
+                child: Padding(
+                  padding: EdgeInsets.symmetric(vertical: 40),
+                  child: Column(
+                    children: [
+                      Icon(Icons.hourglass_empty_rounded, size: 60, color: Colors.orange),
+                      SizedBox(height: 16),
+                      Text('Your request is being processed...', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.bold)),
+                      Text('جاري معالجة طلبك حالياً', textAlign: TextAlign.center),
+                    ],
+                  ),
+                ),
+              )
             ],
           ],
         ),
