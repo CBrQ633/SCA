@@ -1,10 +1,10 @@
 class SubscriptionRequest {
   final String id;
   final String userId;
-  final String planType; // 'monthly' or 'quarterly'
+  final String planType; 
   final double amount;
   final String? paymentScreenshotUrl;
-  final String status; // 'pending', 'approved', 'rejected'
+  final String status; 
   final DateTime createdAt;
   final DateTime? processedAt;
   final String? processedBy;
@@ -25,25 +25,18 @@ class SubscriptionRequest {
     return SubscriptionRequest(
       id: json['id'] as String,
       userId: json['user_id'] as String,
-      planType: json['plan_type'] as String,
+      planType: json['plan_type'] as String? ?? 'monthly',
       amount: (json['amount'] as num?)?.toDouble() ?? 0.0,
       paymentScreenshotUrl: json['payment_screenshot_url'] as String?,
-      status: json['status'] as String,
-      createdAt: DateTime.parse(json['created_at'] as String),
-      processedAt: json['processed_at'] != null
-          ? DateTime.parse(json['processed_at'] as String)
-          : null,
+      status: json['status'] as String? ?? 'pending',
+      createdAt: json['created_at'] != null ? DateTime.parse(json['created_at'] as String) : DateTime.now(),
+      processedAt: json['processed_at'] != null ? DateTime.parse(json['processed_at'] as String) : null,
       processedBy: json['processed_by'] as String?,
     );
   }
 
   bool get isPending => status == 'pending';
   bool get isApproved => status == 'approved';
-  bool get isRejected => status == 'rejected';
-  bool get isMonthly => planType == 'monthly';
-  bool get isQuarterly => planType == 'quarterly';
-
-  int get durationDays => isMonthly ? 30 : 90;
 }
 
 class CallList {
@@ -52,19 +45,14 @@ class CallList {
   final String name;
   final DateTime createdAt;
 
-  CallList({
-    required this.id,
-    required this.userId,
-    required this.name,
-    required this.createdAt,
-  });
+  CallList({required this.id, required this.userId, required this.name, required this.createdAt});
 
   factory CallList.fromJson(Map<String, dynamic> json) {
     return CallList(
       id: json['id'] as String,
       userId: json['user_id'] as String,
-      name: json['name'] as String,
-      createdAt: DateTime.parse(json['created_at'] as String),
+      name: json['name'] as String? ?? 'Unnamed List',
+      createdAt: json['created_at'] != null ? DateTime.parse(json['created_at'] as String) : DateTime.now(),
     );
   }
 }
@@ -74,7 +62,7 @@ class CallEntry {
   final String listId;
   final String phoneNumber;
   final String? customerName;
-  final String status; // 'pending', 'answered', 'not_answered'
+  final String status; 
   final DateTime? calledAt;
   final int position;
 
@@ -89,8 +77,8 @@ class CallEntry {
   });
 
   factory CallEntry.fromJson(Map<String, dynamic> json) {
+    // Robust parsing to handle multiple table column names
     String rawStatus = json['status'] as String? ?? 'pending';
-    // Normalize status from different tables
     if (rawStatus == 'called') rawStatus = 'answered';
     if (rawStatus == 'no_answer') rawStatus = 'not_answered';
 
@@ -100,18 +88,10 @@ class CallEntry {
       phoneNumber: (json['phone_number'] ?? json['phone']) as String? ?? '',
       customerName: (json['customer_name'] ?? json['name']) as String?,
       status: rawStatus,
-      calledAt: (json['called_at'] != null)
-          ? DateTime.parse(json['called_at'] as String)
-          : (rawStatus != 'pending' && json['updated_at'] != null)
-              ? DateTime.parse(json['updated_at'] as String)
-              : null,
+      calledAt: json['called_at'] != null ? DateTime.parse(json['called_at'] as String) : null,
       position: json['position'] as int? ?? 0,
     );
   }
-
-  bool get isPending => status == 'pending';
-  bool get isAnswered => status == 'answered';
-  bool get isNotAnswered => status == 'not_answered';
 }
 
 class NewsAnnouncement {
@@ -138,24 +118,15 @@ class NewsAnnouncement {
   factory NewsAnnouncement.fromJson(Map<String, dynamic> json) {
     return NewsAnnouncement(
       id: json['id'] as String,
-      title:
-          json['title'] as String? ?? json['title_ar'] as String? ?? 'No Title',
-      content: json['content'] as String? ??
-          json['content_ar'] as String? ??
-          'No Content',
-      imageUrls: json['image_urls'] != null
-          ? List<String>.from(json['image_urls'] as List)
+      title: json['title'] as String? ?? json['title_ar'] as String? ?? 'No Title',
+      content: json['content'] as String? ?? json['content_ar'] as String? ?? 'No Content',
+      imageUrls: json['image_urls'] != null 
+          ? List<String>.from(json['image_urls'] as List) 
           : (json['image_url'] != null ? [json['image_url'] as String] : []),
       createdBy: json['created_by'] as String? ?? 'unknown',
-      createdAt: DateTime.parse(json['created_at'] as String),
+      createdAt: json['created_at'] != null ? DateTime.parse(json['created_at'] as String) : DateTime.now(),
       isActive: json['is_active'] as bool? ?? true,
-      expiryDate: json['expiry_date'] != null
-          ? DateTime.parse(json['expiry_date'] as String)
-          : null,
+      expiryDate: json['expiry_date'] != null ? DateTime.parse(json['expiry_date'] as String) : null,
     );
   }
-
-  // Deprecated helper methods for compatibility during migration
-  String getTitle(String _) => title;
-  String getContent(String _) => content;
 }
