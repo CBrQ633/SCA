@@ -21,21 +21,18 @@ class NotificationService {
   );
 
   Future<void> initialize() async {
-    // 1. Request FCM permission
     await FirebaseMessaging.instance.requestPermission(
       alert: true,
       badge: true,
       sound: true,
     );
 
-    // 2. Setup Android Channel
     final androidPlugin = _localNotifications.resolvePlatformSpecificImplementation<
         AndroidFlutterLocalNotificationsPlugin>();
     if (androidPlugin != null) {
       await androidPlugin.createNotificationChannel(_channel);
     }
 
-    // 3. Init Settings
     const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
     const iosSettings = DarwinInitializationSettings(
       requestAlertPermission: true,
@@ -50,12 +47,11 @@ class NotificationService {
 
     await _localNotifications.initialize(
       initSettings,
-      onDidReceiveNotificationResponse: (NotificationResponse response) {
-        foundation.debugPrint('Notification clicked: ${response.payload}');
+      onDidReceiveNotificationResponse: (NotificationResponse details) {
+        foundation.debugPrint('Notification clicked: ${details.payload}');
       },
     );
 
-    // 4. Topics
     try {
       if (Firebase.apps.isNotEmpty) {
         await FirebaseMessaging.instance.subscribeToTopic('all_users');
@@ -65,7 +61,6 @@ class NotificationService {
       foundation.debugPrint('Topic error: $e');
     }
 
-    // 5. Listen to messages
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
       _showForegroundNotification(message);
     });
@@ -77,15 +72,17 @@ class NotificationService {
     required String body,
     String? payload,
   }) async {
+    const androidDetails = AndroidNotificationDetails(
+      'high_importance_channel',
+      'High Importance Notifications',
+      channelDescription: 'This channel is used for important notifications.',
+      importance: Importance.max,
+      priority: Priority.high,
+      showWhen: true,
+    );
+
     const notificationDetails = NotificationDetails(
-      android: AndroidNotificationDetails(
-        'high_importance_channel',
-        'High Importance Notifications',
-        channelDescription: 'This channel is used for important notifications.',
-        importance: Importance.max,
-        priority: Priority.high,
-        showWhen: true,
-      ),
+      android: androidDetails,
       iOS: DarwinNotificationDetails(),
     );
 

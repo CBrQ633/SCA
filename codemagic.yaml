@@ -6,7 +6,7 @@ workflows:
     environment:
       flutter: stable
     scripts:
-      - name: Get Flutter dependencies
+      - name: Get dependencies
         script: | 
           flutter pub get
       - name: Build Android APK
@@ -14,10 +14,6 @@ workflows:
           flutter build apk --release --no-tree-shake-icons
     artifacts:
       - build/app/outputs/flutter-apk/app-release.apk
-    publishing:
-      email:
-        recipients:
-          - mbwbrq@gmail.com
 
   ios-workflow:
     name: SCA iOS Build (Unsigned)
@@ -28,25 +24,24 @@ workflows:
       xcode: latest
       cocoapods: default
     scripts:
-      - name: Setup Environment
+      - name: Setup & Clean Environment
         script: | 
-          # Clear local config leaks from Windows
+          # Remove local config leaks from Windows
           rm -f ios/Flutter/Generated.xcconfig
           rm -f ios/Flutter/flutter_export_environment.sh
+          rm -rf ios/Pods
+          rm -rf ios/Podfile.lock
           flutter clean
       - name: Get Flutter dependencies
         script: | 
           flutter pub get
-      - name: Install CocoaPods
+      - name: Install CocoaPods (Forced update)
         script: | 
-          cd ios && pod install
+          cd ios
+          pod install --repo-update
       - name: Build iOS (No Code Signing)
         script: | 
           flutter build ios --release --no-codesign
     artifacts:
       - build/ios/iphoneos/*.app
       - /tmp/xcodebuild_logs/*.log
-    publishing:
-      email:
-        recipients:
-          - mbwbrq@gmail.com
