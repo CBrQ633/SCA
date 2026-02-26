@@ -17,18 +17,24 @@ jobs:
           channel: "stable"
           cache: true
 
+      - name: Clean Environment
+        run: |
+          flutter clean
+          rm -rf ios/Flutter/Generated.xcconfig
+          rm -rf ios/Flutter/flutter_export_environment.sh
+
       - name: Install Dependencies
         run: flutter pub get
 
-      - name: Pre-configure iOS
+      - name: Pre-configure iOS (Fix)
         run: |
-          # اجبار فلاتر على توليد ملفات الإعدادات الخاصة ببيئة الماك
-          flutter build ios --config-only --release
+          # إضافة --no-codesign لمنع المطالبة بالشهادات
+          flutter build ios --config-only --release --no-codesign
 
-      - name: Build iOS (No Codesign)
+      - name: Build iOS App
         run: flutter build ios --release --no-codesign
 
-      - name: Create IPA (Standard Method)
+      - name: Create IPA
         run: |
           mkdir Payload
           cp -r build/ios/iphoneos/Runner.app Payload/
