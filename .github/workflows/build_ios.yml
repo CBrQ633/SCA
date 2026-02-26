@@ -2,7 +2,7 @@ name: Build iOS (Unsigned)
 
 on:
   push:
-    branches: ["main", "feature/*"]
+    branches: ["main"]
   workflow_dispatch:
 
 jobs:
@@ -17,19 +17,22 @@ jobs:
           channel: "stable"
           cache: true
 
-      - name: Clean Environment
+      - name: Force Delete Bad Configs
         run: |
+          # حذف أي ملفات إعدادات قديمة تماماً
+          rm -f ios/Flutter/Generated.xcconfig
+          rm -f ios/Flutter/flutter_export_environment.sh
+          rm -rf ios/Pods
+          rm -rf ios/Podfile.lock
           flutter clean
-          rm -rf ios/Flutter/Generated.xcconfig
-          rm -rf ios/Flutter/flutter_export_environment.sh
 
       - name: Install Dependencies
         run: flutter pub get
 
-      - name: Pre-configure iOS (Fix)
+      - name: Pre-configure iOS
         run: |
-          # إضافة --no-codesign لمنع المطالبة بالشهادات
-          flutter build ios --config-only --release --no-codesign
+          # توليد الإعدادات المناسبة للماك
+          flutter build ios --config-only --no-codesign
 
       - name: Build iOS App
         run: flutter build ios --release --no-codesign
