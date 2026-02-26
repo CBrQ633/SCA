@@ -17,22 +17,13 @@ jobs:
           channel: "stable"
           cache: true
 
-      - name: Force Clean Local Configs
-        run: |
-          # مسح أي ملفات إعدادات قد تكون تسللت من الويندوز
-          rm -f ios/Flutter/Generated.xcconfig
-          rm -f ios/Flutter/flutter_export_environment.sh
-          rm -rf ios/Pods
-          rm -rf build
-
-      - name: Get Dependencies
+      - name: Install Dependencies
         run: flutter pub get
 
-      - name: Install Pods
+      - name: Pre-configure iOS
         run: |
-          cd ios
-          pod install --repo-update
-          cd ..
+          # اجبار فلاتر على توليد ملفات الإعدادات الخاصة ببيئة الماك
+          flutter build ios --config-only --release
 
       - name: Build iOS (No Codesign)
         run: flutter build ios --release --no-codesign
