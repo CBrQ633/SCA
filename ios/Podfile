@@ -1,7 +1,6 @@
-# Set platform to 13.0 to support modern Firebase/Supabase features
-platform :ios, '13.0'
+# ✅ الحل الجذري: رفع الإصدار ليتوافق مع ML Kit و Firebase
+platform :ios, '15.5'
 
-# Disable CocoaPods analytics for faster builds
 ENV['COCOAPODS_DISABLE_STATS'] = 'true'
 
 project 'Runner', {
@@ -23,13 +22,12 @@ def flutter_root
   raise "FLUTTER_ROOT not found"
 end
 
-# Load Flutter helper
 require File.expand_path(File.join('packages', 'flutter_tools', 'bin', 'podhelper'), flutter_root)
 
 flutter_ios_podfile_setup
 
 target 'Runner' do
-  # ✅ Fix: Use static linkage to avoid Firebase dynamic library conflicts
+  # Use static linkage for better Firebase compatibility
   use_frameworks! :linkage => :static
   use_modular_headers!
 
@@ -40,9 +38,10 @@ post_install do |installer|
   installer.pods_project.targets.each do |target|
     flutter_additional_ios_build_settings(target)
 
-    # Ensure every pod target uses iOS 13.0
+    # ✅ إجبار كافة المكتبات (بما فيها ML Kit) على العمل بإصدار 15.5
     target.build_configurations.each do |config|
-      config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '13.0'
+      config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.5'
+      config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] ||= ['$(inherited)', 'PERMISSION_CAMERA=1', 'PERMISSION_PHOTOS=1']
     end
   end
 end
