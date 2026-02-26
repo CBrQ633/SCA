@@ -1,40 +1,36 @@
-# Force platform to iOS 13.0
+# Set platform to 13.0 to support modern Firebase/Supabase features
 platform :ios, '13.0'
 
-# CocoaPods analytics sends network stats synchronously affecting flutter build latency.
-ENV['COCOAPODS_DISABLE_STATS'] = '1'
+# Disable CocoaPods analytics for faster builds
+ENV['COCOAPODS_DISABLE_STATS'] = 'true'
 
 project 'Runner', {
-  'Debug' => :project,
-  'Release' => :project,
-  'Profile' => :project,
+  'Debug' => :debug,
+  'Profile' => :release,
+  'Release' => :release,
 }
 
 def flutter_root
   generated_xcode_build_settings_path = File.expand_path(File.join('..', 'Flutter', 'Generated.xcconfig'), __FILE__)
-
-  # ✅ Fix: If file is corrupted or has Windows paths, try to find FLUTTER_ROOT from env
-  if File.exist?(generated_xcode_build_settings_path)
-    File.foreach(generated_xcode_build_settings_path) do |line|
-      matches = line.match(/\AFLUTTER_ROOT=(.*)\z/)
-      if matches
-        path = matches[1].strip
-        # If it's a Windows path, ignore it and look for environment variable
-        return path unless path.include?('\\') || path.include?('C:')
-      end
-    end
+  unless File.exist?(generated_xcode_build_settings_path)
+    raise "#{generated_xcode_build_settings_path} must exist. Run flutter pub get first"
   end
 
-  # Fallback to environment variable (set by Flutter tool on macOS)
-  return ENV['FLUTTER_ROOT'] if ENV['FLUTTER_ROOT']
-
-  raise "FLUTTER_ROOT not found. Please ensure flutter pub get is executed first."
+  File.foreach(generated_xcode_build_settings_path) do |line|
+    matches = line.match(/FLUTTER_ROOT\=(.*)/)
+    return matches[1].strip if matches
+  end
+  raise "FLUTTER_ROOT not found"
 end
 
-require File.expand_path(File.join('packages', 'flutter_tools', 'bin', 'xcode_backend.rb'), flutter_root)
+# Load Flutter helper
+require File.expand_path(File.join('packages', 'flutter_tools', 'bin', 'podhelper'), flutter_root)
+
+flutter_ios_podfile_setup
 
 target 'Runner' do
-  use_frameworks!
+  # ✅ Fix: Use static linkage to avoid Firebase dynamic library conflicts
+  use_frameworks! :linkage => :static
   use_modular_headers!
 
   flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
@@ -43,9 +39,10 @@ end
 post_install do |installer|
   installer.pods_project.targets.each do |target|
     flutter_additional_ios_build_settings(target)
+
+    # Ensure every pod target uses iOS 13.0
     target.build_configurations.each do |config|
       config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '13.0'
-      config.build_settings['ENABLE_BITCODE'] = 'NO'
     end
   end
 end
