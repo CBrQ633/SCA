@@ -1,0 +1,32 @@
+workflows:
+  ios-workflow:
+    name: SCA iOS Build (Unsigned)
+    max_build_duration: 60
+    instance_type: mac_mini_m1
+    environment:
+      flutter: stable
+      xcode: latest
+      cocoapods: default
+    scripts:
+      - name: Setup Environment
+        script: | 
+          # Clear local config leaks from Windows
+          rm -f ios/Flutter/Generated.xcconfig
+          rm -f ios/Flutter/flutter_export_environment.sh
+          flutter clean
+      - name: Get Flutter dependencies
+        script: | 
+          flutter pub get
+      - name: Install CocoaPods
+        script: | 
+          cd ios && pod install
+      - name: Build iOS (No Code Signing)
+        script: | 
+          flutter build ios --release --no-codesign
+    artifacts:
+      - build/ios/iphoneos/*.app
+      - /tmp/xcodebuild_logs/*.log
+    publishing:
+      email:
+        recipients:
+          - mbwbrq@gmail.com # Your email for build status
