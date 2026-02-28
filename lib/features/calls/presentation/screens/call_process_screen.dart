@@ -18,7 +18,7 @@ class _CallProcessScreenState extends State<CallProcessScreen> {
   List<CallListItemModel> _items = [];
   int _currentIndex = 0;
   bool _isLoading = true;
-  bool _isFinished = false; // ✅ Track completion state
+  bool _isFinished = false;
 
   @override
   void initState() {
@@ -34,7 +34,8 @@ class _CallProcessScreenState extends State<CallProcessScreen> {
           .toList();
 
       if (pendingFn.isEmpty) {
-        if (mounted) setState(() => _isFinished = true);
+        if (mounted) setState(() { _isFinished = true; _isLoading = false; });
+        return;
       }
 
       final prefs = await SharedPreferences.getInstance();
@@ -85,14 +86,13 @@ class _CallProcessScreenState extends State<CallProcessScreen> {
       if (mounted) {
         final prefs = await SharedPreferences.getInstance();
         if (_currentIndex < _items.length - 1) {
-          final nextIndex = _currentIndex + 1;
-          await prefs.setInt('call_index_${widget.listId}', nextIndex);
           setState(() {
-            _currentIndex = nextIndex;
+            _currentIndex++;
           });
+          await prefs.setInt('call_index_${widget.listId}', _currentIndex);
         } else {
           await prefs.remove('call_index_${widget.listId}');
-          setState(() => _isFinished = true); // ✅ Stop UI from rendering contact data
+          setState(() => _isFinished = true);
           _showCompletionDialog();
         }
       }
@@ -106,16 +106,18 @@ class _CallProcessScreenState extends State<CallProcessScreen> {
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('List Completed! / انتهيت!'),
-        content: const Text('Great job! All contacts have been processed.\nأحسنت! لقد انتهيت من جميع جهات الاتصال.'),
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: const Text('All Done! / انتهيت', style: TextStyle(fontWeight: FontWeight.bold)),
+        content: const Text('You have processed all contacts in this list.\nلقد أكملت جميع جهات الاتصال في هذه القائمة.'),
         actions: [
           ElevatedButton(
             onPressed: () {
               Navigator.of(context).pop();
               Navigator.of(context).pop();
             },
-            child: const Text('Back / العودة'),
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0F172A), foregroundColor: Colors.white),
+            child: const Text('OK / حسناً'),
           ),
         ],
       ),
@@ -124,38 +126,34 @@ class _CallProcessScreenState extends State<CallProcessScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    
-    if (_isLoading) {
-      return const Scaffold(backgroundColor: Colors.white, body: Center(child: CircularProgressIndicator()));
-    }
+    if (_isLoading) return const Scaffold(backgroundColor: Colors.white, body: Center(child: CircularProgressIndicator()));
 
-    if (_isFinished || _items.isEmpty) {
+    if (_isFinished || _items.isEmpty || _currentIndex >= _items.length) {
       return Scaffold(
         backgroundColor: Colors.white,
-        appBar: AppBar(title: const Text('Finished'), backgroundColor: Colors.white, elevation: 0),
+        appBar: AppBar(title: const Text('List Finished'), backgroundColor: Colors.white, elevation: 0),
         body: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               const AppLogo(size: 80, showText: false),
               const SizedBox(height: 24),
-              const Text('All caught up!', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              const Text('Session Completed!', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
               const SizedBox(height: 24),
-              ElevatedButton(onPressed: () => Navigator.pop(context), child: const Text('Go Back')),
+              ElevatedButton(onPressed: () => Navigator.pop(context), child: const Text('Return')),
             ],
           ),
         ),
       );
     }
 
-    // ✅ Safe check before rendering currentItem
     final currentItem = _items[_currentIndex];
+    final theme = Theme.of(context);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
-        title: Text('Call ${_currentIndex + 1} / ${_items.length}', style: const TextStyle(color: Colors.black)),
+        title: Text('Contact ${_currentIndex + 1} / ${_items.length}', style: const TextStyle(color: Colors.black, fontSize: 16)),
         backgroundColor: Colors.white,
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.black),
@@ -178,18 +176,19 @@ class _CallProcessScreenState extends State<CallProcessScreen> {
               padding: const EdgeInsets.all(32),
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(24),
-                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 15, offset: const Offset(0, 5))],
+                borderRadius: BorderRadius.circular(28),
+                border: Border.all(color: Colors.black.withOpacity(0.05)),
+                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 20, offset: const Offset(0, 10))],
               ),
               child: Column(
                 children: [
                   CircleAvatar(
-                    radius: 40,
+                    radius: 45,
                     backgroundColor: theme.colorScheme.primary,
-                    child: Text(currentItem.name?[0] ?? '?', style: const TextStyle(fontSize: 30, color: Colors.white, fontWeight: FontWeight.bold)),
+                    child: Text(currentItem.name?[0] ?? '?', style: const TextStyle(fontSize: 32, color: Colors.white, fontWeight: FontWeight.bold)),
                   ),
                   const SizedBox(height: 24),
-                  Text(currentItem.name ?? 'Unknown', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+                  Text(currentItem.name ?? 'Unknown', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)), textAlign: TextAlign.center),
                   const SizedBox(height: 8),
                   Text(currentItem.phone, style: TextStyle(fontSize: 18, color: theme.colorScheme.secondary, fontWeight: FontWeight.w600)),
                 ],
@@ -199,51 +198,51 @@ class _CallProcessScreenState extends State<CallProcessScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                _buildBtn(Icons.call, 'Call', Colors.blue, () => _makeCall(currentItem.phone)),
-                _buildBtn(Icons.chat, 'WhatsApp', const Color(0xFF128C7E), () => _openWhatsApp(currentItem.phone)),
+                _buildActionBtn(Icons.call_rounded, 'Call', Colors.blue, () => _makeCall(currentItem.phone)),
+                _buildActionBtn(Icons.chat_rounded, 'WhatsApp', const Color(0xFF128C7E), () => _openWhatsApp(currentItem.phone)),
               ],
             ),
-            const SizedBox(height: 40),
+            const SizedBox(height: 48),
             Row(
               children: [
                 Expanded(
                   child: ElevatedButton(
                     onPressed: () => _updateStatus('called'),
-                    style: ElevatedButton.styleFrom(backgroundColor: theme.colorScheme.secondary, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-                    child: const Text('Answered / تم الرد', style: TextStyle(fontWeight: FontWeight.bold)),
+                    style: ElevatedButton.styleFrom(backgroundColor: theme.colorScheme.secondary, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 18), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
+                    child: const Text('ANSWERED / تــم الـرد', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: OutlinedButton(
                     onPressed: () => _updateStatus('no_answer'),
-                    style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-                    child: const Text('No Answer / لم يرد'),
+                    style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 18), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
+                    child: const Text('MISSED / لـم يـرد', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 16),
-            TextButton(onPressed: () => setState(() => _currentIndex < _items.length - 1 ? _currentIndex++ : _showCompletionDialog()), child: const Text('Skip / تخطي', style: TextStyle(color: Colors.grey))),
+            TextButton(onPressed: () => setState(() => _currentIndex < _items.length - 1 ? _currentIndex++ : _showCompletionDialog()), child: const Text('Skip / تخطي', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold))),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildBtn(IconData icon, String label, Color color, VoidCallback onTap) {
+  Widget _buildActionBtn(IconData icon, String label, Color color, VoidCallback onTap) {
     return Column(
       children: [
         InkWell(
           onTap: onTap,
           borderRadius: BorderRadius.circular(50),
           child: Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(color: color.withOpacity(0.1), shape: BoxShape.circle),
-            child: Icon(icon, color: color, size: 30),
+            padding: const EdgeInsets.all(22),
+            decoration: BoxDecoration(color: color.withOpacity(0.08), shape: BoxShape.circle),
+            child: Icon(icon, color: color, size: 32),
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 10),
         Text(label, style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 13)),
       ],
     );
