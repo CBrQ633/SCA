@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:animate_do/animate_do.dart';
 import 'package:provider/provider.dart';
 import '../../data/reports_repository.dart';
 import '../../data/models/report_stats.dart';
 import '../../../../core/services/excel_service.dart';
 import '../../../../core/components/app_logo.dart';
 import '../../../../features/auth/presentation/auth_provider.dart';
+import '../../../../shared/services/models.dart';
 
 class ReportsScreen extends StatefulWidget {
   const ReportsScreen({super.key});
@@ -18,7 +18,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
   final ReportsRepository _repository = ReportsRepository();
   bool _isLoading = true;
   CallStats? _callStats;
-  SubscriptionStats? _subscriptionStats;
+  List<CallEntry> _allCalls = [];
 
   @override
   void initState() {
@@ -28,19 +28,12 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
   Future<void> _loadStats() async {
     try {
-      final authProvider = context.read<AuthProvider>();
       final callStats = await _repository.getCallStats();
-      
-      // ✅ Fix: Only load system-wide stats if Admin
-      SubscriptionStats? subStats;
-      if (authProvider.isAdmin) {
-        subStats = await _repository.getSubscriptionStats();
-      }
-
+      final allCalls = await _repository.getCallDetails();
       if (mounted) {
         setState(() {
           _callStats = callStats;
-          _subscriptionStats = subStats;
+          _allCalls = allCalls;
           _isLoading = false;
         });
       }
@@ -54,140 +47,151 @@ class _ReportsScreenState extends State<ReportsScreen> {
     return (_callStats!.answered / _callStats!.totalCalls);
   }
 
+  void _showDetailsDialog(String title, List<CallEntry> filteredCalls) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.7,
+        maxChildSize: 0.9,
+        expand: false,
+        builder: (context, scrollController) => Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(20),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  IconButton(
+                    icon: const Icon(Icons.file_download_outlined, color: Color(0xFF10B981)),
+                    onPressed: () async {
+                      Navigator.pop(context);
+                      await ExcelService().generateAndShareCallReport(filteredCalls, title);
+                    },
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+            Expanded(
+              child: filteredCalls.isEmpty 
+                ? const Center(child: Text('No records found / لا توجد سجلات'))
+                : ListView.builder(
+                    controller: scrollController,
+                    itemCount: filteredCalls.length,
+                    itemBuilder: (context, index) {
+                      final call = filteredCalls[index];
+                      return ListTile(
+                        leading: CircleAvatar(backgroundColor: const Color(0xFFF1F5F9), child: Text('${index + 1}', style: const TextStyle(fontSize: 12, color: Colors.black))),
+                        title: Text(call.customerName ?? 'Unknown'),
+                        subtitle: Text(call.phoneNumber),
+                        trailing: Icon(call.isAnswered ? Icons.check_circle : Icons.cancel, color: call.isAnswered ? Colors.green : Colors.red, size: 16),
+                      );
+                    },
+                  ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isAdmin = context.watch<AuthProvider>().isAdmin;
     
     return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
-        title: Text(isAdmin ? 'System Reports / تقارير النظام' : 'My Performance / إنجازاتي'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.share_outlined),
-            onPressed: () async {
-              setState(() => _isLoading = true);
-              try {
-                final calls = await _repository.getCallDetails();
-                await ExcelService().generateAndShareCallReport(calls, 'SCA_Report');
-              } catch (e) {
-                if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
-              } finally {
-                if (mounted) setState(() => _isLoading = false);
-              }
-            },
-          ),
-        ],
+        title: const Text('My Performance / إنجازاتي', style: TextStyle(fontWeight: FontWeight.bold)),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        centerTitle: true,
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
               onRefresh: _loadStats,
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    FadeInDown(child: const Center(child: AppLogo(size: 60, showText: true))),
-                    const SizedBox(height: 32),
-                    
-                    // Personal Success Rate (Visible to everyone)
-                    FadeInUp(
-                      child: Center(
-                        child: Container(
-                          padding: const EdgeInsets.all(24),
-                          decoration: BoxDecoration(color: theme.colorScheme.primary.withOpacity(0.05), shape: BoxShape.circle),
-                          child: Stack(
-                            alignment: Alignment.center,
-                            children: [
-                              SizedBox(
-                                width: 140, height: 140,
-                                child: CircularProgressIndicator(
-                                  value: _successRate,
-                                  strokeWidth: 10,
-                                  backgroundColor: Colors.white,
-                                  valueColor: AlwaysStoppedAnimation<Color>(theme.colorScheme.secondary),
-                                ),
-                              ),
-                              Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text('${(_successRate * 100).toStringAsFixed(1)}%', style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: theme.colorScheme.primary)),
-                                  const Text('Success Rate', style: TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.bold)),
-                                ],
-                              ),
-                            ],
+              child: ListView(
+                padding: const EdgeInsets.all(24),
+                children: [
+                  const Center(child: AppLogo(size: 60, showText: true)),
+                  const SizedBox(height: 40),
+                  
+                  // Circular Progress
+                  Center(
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        SizedBox(
+                          width: 150, height: 150,
+                          child: CircularProgressIndicator(
+                            value: _successRate,
+                            strokeWidth: 12,
+                            backgroundColor: Colors.white,
+                            valueColor: AlwaysStoppedAnimation<Color>(theme.colorScheme.secondary),
                           ),
                         ),
-                      ),
-                    ),
-                    const SizedBox(height: 40),
-
-                    // ✅ Fix: Only show System Overview to Admin
-                    if (isAdmin && _subscriptionStats != null) ...[
-                      _buildSectionHeader('System Overview / نظرة عامة', Icons.analytics_outlined),
-                      const SizedBox(height: 16),
-                      _buildStatCard('Total Users / المستخدمين', _subscriptionStats?.totalUsers.toString() ?? '0', Icons.group, theme.colorScheme.primary),
-                      const SizedBox(height: 16),
-                      Row(
-                        children: [
-                          Expanded(child: _buildStatCard('Active / نشط', _subscriptionStats?.active.toString() ?? '0', Icons.check_circle, theme.colorScheme.secondary, compact: true)),
-                          const SizedBox(width: 12),
-                          Expanded(child: _buildStatCard('Pending / معلق', _subscriptionStats?.pending.toString() ?? '0', Icons.pending, Colors.orange, compact: true)),
-                        ],
-                      ),
-                      const SizedBox(height: 32),
-                    ],
-                    
-                    _buildSectionHeader('Call Statistics / إحصائيات الاتصال', Icons.call_outlined),
-                    const SizedBox(height: 16),
-                    _buildStatCard('Total Logged / إجمالي العمليات', _callStats?.totalCalls.toString() ?? '0', Icons.phone_forwarded, theme.colorScheme.primary),
-                    const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        Expanded(child: _buildStatCard('Answered / رد', _callStats?.answered.toString() ?? '0', Icons.phone_callback, theme.colorScheme.secondary, compact: true)),
-                        const SizedBox(width: 12),
-                        Expanded(child: _buildStatCard('Missed / لم يرد', _callStats?.noAnswer.toString() ?? '0', Icons.phone_missed, Colors.redAccent, compact: true)),
+                        Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text('${(_successRate * 100).toStringAsFixed(1)}%', style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w900, color: Color(0xFF0F172A))),
+                            const Text('Success Rate', style: TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.bold)),
+                          ],
+                        ),
                       ],
                     ),
-                    const SizedBox(height: 40),
-                  ],
-                ),
+                  ),
+                  const SizedBox(height: 48),
+
+                  _buildSectionHeader('Call Statistics / الإحصائيات'),
+                  const SizedBox(height: 16),
+                  
+                  _buildStatCard('Total Logged', _callStats?.totalCalls.toString() ?? '0', Icons.phone_android_rounded, const Color(0xFF0F172A)),
+                  const SizedBox(height: 16),
+                  
+                  Row(
+                    children: [
+                      Expanded(
+                        child: InkWell(
+                          onTap: () => _showDetailsDialog('Answered Calls', _allCalls.where((c) => c.isAnswered).toList()),
+                          child: _buildStatCard('Answered', _callStats?.answered.toString() ?? '0', Icons.phone_callback_rounded, const Color(0xFF10B981), compact: true),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: InkWell(
+                          onTap: () => _showDetailsDialog('Missed Calls', _allCalls.where((c) => c.isNotAnswered).toList()),
+                          child: _buildStatCard('Missed', _callStats?.noAnswer.toString() ?? '0', Icons.phone_missed_rounded, Colors.redAccent, compact: true),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 40),
+                ],
               ),
             ),
     );
   }
 
-  Widget _buildSectionHeader(String title, IconData icon) {
-    return Row(
-      children: [
-        Icon(icon, size: 20, color: const Color(0xFF0F172A)),
-        const SizedBox(width: 10),
-        Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
-      ],
-    );
+  Widget _buildSectionHeader(String title) {
+    return Text(title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.blueGrey, letterSpacing: 1.2));
   }
 
   Widget _buildStatCard(String title, String value, IconData icon, Color color, {bool compact = false}) {
     return Container(
-      padding: EdgeInsets.all(compact ? 16 : 20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.black.withOpacity(0.05)),
-      ),
+      padding: EdgeInsets.all(compact ? 20 : 24),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4))]),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Icon(icon, color: color, size: compact ? 18 : 22),
-              const SizedBox(width: 12),
-              Expanded(child: Text(title, style: TextStyle(fontSize: compact ? 11 : 13, color: Colors.grey[600], fontWeight: FontWeight.w600), overflow: TextOverflow.ellipsis)),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text(value, style: TextStyle(fontSize: compact ? 22 : 28, fontWeight: FontWeight.bold, color: const Color(0xFF0F172A))),
+          Icon(icon, color: color, size: 20),
+          const SizedBox(height: 16),
+          Text(value, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: Color(0xFF0F172A))),
+          Text(title, style: const TextStyle(color: Colors.grey, fontSize: 11, fontWeight: FontWeight.w600)),
         ],
       ),
     );

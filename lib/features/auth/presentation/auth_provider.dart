@@ -14,8 +14,6 @@ class AuthProvider with ChangeNotifier, WidgetsBindingObserver {
   bool _isLoading = false;
   String? _errorMessage;
   
-  // Removed the periodic timer that caused redirects/lag
-
   UserModel? get currentUser => _currentUser;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
@@ -30,7 +28,6 @@ class AuthProvider with ChangeNotifier, WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // Only refresh when the user returns to the app to check session validity
     if (state == AppLifecycleState.resumed && isAuthenticated) {
       refreshUser(silent: true);
     }
@@ -76,13 +73,8 @@ class AuthProvider with ChangeNotifier, WidgetsBindingObserver {
   }) async {
     _setLoading(true);
     _errorMessage = null;
-
     try {
-      await _authRepository.register(
-        email: email,
-        password: password,
-        fullName: fullName,
-      );
+      await _authRepository.register(email: email, password: password, fullName: fullName);
       _setLoading(false);
       return true;
     } on AuthException catch (e) {
@@ -100,12 +92,10 @@ class AuthProvider with ChangeNotifier, WidgetsBindingObserver {
     if (_isLoading) return false;
     _setLoading(true);
     _errorMessage = null;
-
     try {
       final user = await _authRepository.login(email: email, password: password);
       final deviceId = await _getOrCreateDeviceId();
       await _authRepository.updateUserDeviceId(user.id, deviceId);
-      
       await refreshUser();
       _setLoading(false);
       return true;
@@ -114,7 +104,7 @@ class AuthProvider with ChangeNotifier, WidgetsBindingObserver {
       _setLoading(false);
       return false;
     } catch (e) {
-      _errorMessage = "بيانات الدخول غير صحيحة أو الحساب غير موجود";
+      _errorMessage = "بيانات الدخول غير صحيحة";
       _setLoading(false);
       return false;
     }
@@ -126,7 +116,9 @@ class AuthProvider with ChangeNotifier, WidgetsBindingObserver {
       if (user != null) {
         final localDeviceId = await _getOrCreateDeviceId();
         
-        if (user.currentDeviceId != null && user.currentDeviceId != localDeviceId) {
+        // ✅ Improved logic: Only kick out if device IDs are explicitly different and not null
+        if (user.currentDeviceId != null && user.currentDeviceId!.isNotEmpty && user.currentDeviceId != localDeviceId) {
+          foundation.debugPrint('Security: Device mismatch. Remote: ${user.currentDeviceId}, Local: $localDeviceId');
           _errorMessage = 'تم تسجيل الدخول من جهاز آخر';
           if (!silent) notifyListeners();
           await logout();
@@ -158,15 +150,9 @@ class AuthProvider with ChangeNotifier, WidgetsBindingObserver {
   }
 
   String _mapAuthError(String message) {
-    if (message.contains('Invalid login credentials')) {
-      return "البريد الإلكتروني أو كلمة المرور غير صحيحة";
-    } else if (message.contains('Email not confirmed')) {
-      return "يرجى تأكيد البريد الإلكتروني أولاً";
-    } else if (message.contains('User already registered')) {
-      return "هذا البريد مسجل بالفعل، يمكنك تسجيل الدخول";
-    } else if (message.contains('Password should be')) {
-      return "كلمة المرور ضعيفة جداً";
-    }
+    if (message.contains('Invalid login credentials')) return "البريد الإلكتروني أو كلمة المرور غير صحيحة";
+    if (message.contains('Email not confirmed')) return "يرجى تأكيد البريد الإلكتروني أولاً";
+    if (message.contains('User already registered')) return "هذا البريد مسجل بالفعل";
     return "فشل في العملية: $message";
   }
 

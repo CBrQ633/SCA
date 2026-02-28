@@ -18,6 +18,7 @@ class _CallProcessScreenState extends State<CallProcessScreen> {
   List<CallListItemModel> _items = [];
   int _currentIndex = 0;
   bool _isLoading = true;
+  bool _isFinished = false; // ✅ Track completion state
 
   @override
   void initState() {
@@ -31,6 +32,10 @@ class _CallProcessScreenState extends State<CallProcessScreen> {
       final pendingFn = allItems
           .where((i) => i.status == 'pending' || i.status == 'no_answer')
           .toList();
+
+      if (pendingFn.isEmpty) {
+        if (mounted) setState(() => _isFinished = true);
+      }
 
       final prefs = await SharedPreferences.getInstance();
       final savedIndex = prefs.getInt('call_index_${widget.listId}') ?? 0;
@@ -72,10 +77,9 @@ class _CallProcessScreenState extends State<CallProcessScreen> {
   }
 
   Future<void> _updateStatus(String status) async {
-    if (_items.isEmpty) return;
+    if (_items.isEmpty || _currentIndex >= _items.length) return;
     final currentItem = _items[_currentIndex];
     
-    // Show local loading only for the action
     try {
       await _repository.updateItemStatus(currentItem.id, status);
       if (mounted) {
@@ -88,6 +92,7 @@ class _CallProcessScreenState extends State<CallProcessScreen> {
           });
         } else {
           await prefs.remove('call_index_${widget.listId}');
+          setState(() => _isFinished = true); // ✅ Stop UI from rendering contact data
           _showCompletionDialog();
         }
       }
@@ -125,7 +130,7 @@ class _CallProcessScreenState extends State<CallProcessScreen> {
       return const Scaffold(backgroundColor: Colors.white, body: Center(child: CircularProgressIndicator()));
     }
 
-    if (_items.isEmpty) {
+    if (_isFinished || _items.isEmpty) {
       return Scaffold(
         backgroundColor: Colors.white,
         appBar: AppBar(title: const Text('Finished'), backgroundColor: Colors.white, elevation: 0),
@@ -144,10 +149,11 @@ class _CallProcessScreenState extends State<CallProcessScreen> {
       );
     }
 
+    // ✅ Safe check before rendering currentItem
     final currentItem = _items[_currentIndex];
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC), // White-Grey for clean look
+      backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
         title: Text('Call ${_currentIndex + 1} / ${_items.length}', style: const TextStyle(color: Colors.black)),
         backgroundColor: Colors.white,
@@ -167,7 +173,6 @@ class _CallProcessScreenState extends State<CallProcessScreen> {
         child: Column(
           children: [
             const SizedBox(height: 20),
-            // Clean Contact Card (No Animation)
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(32),
@@ -191,7 +196,6 @@ class _CallProcessScreenState extends State<CallProcessScreen> {
               ),
             ),
             const Spacer(),
-            // Actions
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
@@ -200,7 +204,6 @@ class _CallProcessScreenState extends State<CallProcessScreen> {
               ],
             ),
             const SizedBox(height: 40),
-            // Results
             Row(
               children: [
                 Expanded(
