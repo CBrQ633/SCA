@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:go_router/go_router.dart';
 import 'package:smart_call_assistant/features/calls/data/calls_repository.dart';
 import 'package:smart_call_assistant/features/calls/data/models/call_list_model.dart';
 import 'package:smart_call_assistant/core/components/app_logo.dart';
+import 'package:smart_call_assistant/core/constants/app_constants.dart';
 
 class CallProcessScreen extends StatefulWidget {
   final String listId;
@@ -113,8 +115,8 @@ class _CallProcessScreenState extends State<CallProcessScreen> {
         actions: [
           ElevatedButton(
             onPressed: () {
-              Navigator.of(context).pop();
-              Navigator.of(context).pop();
+              // ✅ Fix: Use go instead of double pop to avoid black screen
+              context.go(AppConstants.routeHome);
             },
             style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0F172A), foregroundColor: Colors.white),
             child: const Text('OK / حسناً'),
@@ -140,7 +142,7 @@ class _CallProcessScreenState extends State<CallProcessScreen> {
               const SizedBox(height: 24),
               const Text('Session Completed!', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
               const SizedBox(height: 24),
-              ElevatedButton(onPressed: () => Navigator.pop(context), child: const Text('Return')),
+              ElevatedButton(onPressed: () => context.go(AppConstants.routeHome), child: const Text('Return Home')),
             ],
           ),
         ),

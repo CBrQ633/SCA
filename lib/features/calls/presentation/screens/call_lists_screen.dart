@@ -24,13 +24,13 @@ class _CallListsScreenState extends State<CallListsScreen> {
     Future.microtask(() => context.read<CallsProvider>().loadLists());
   }
 
-  Future<void> _handleOCR() async {
+  Future<void> _handleOCR(ImageSource source) async {
     final callsProvider = context.read<CallsProvider>();
     final userId = context.read<AuthProvider>().currentUser?.id;
     if (userId == null) return;
 
     final picker = ImagePicker();
-    final XFile? image = await picker.pickImage(source: ImageSource.camera);
+    final XFile? image = await picker.pickImage(source: source);
 
     if (image != null) {
       if (mounted) {
@@ -40,15 +40,41 @@ class _CallListsScreenState extends State<CallListsScreen> {
           AppNotifications.showError(context, callsProvider.errorMessage!);
           callsProvider.clearError();
         } else {
-          AppNotifications.showSuccess(context, 'Numbers extracted successfully! / تم استخراج الأرقام بنجاح');
+          AppNotifications.showSuccess(context, 'Success! List created / تم إنشاء القائمة بنجاح');
         }
       }
     }
   }
 
+  void _showImageSourceDialog() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Padding(padding: EdgeInsets.all(16), child: Text('Select Source / اختر المصدر', style: TextStyle(fontWeight: FontWeight.bold))),
+            ListTile(
+              leading: const Icon(Icons.camera_alt_rounded),
+              title: const Text('Camera / كاميرا'),
+              onTap: () { Navigator.pop(context); _handleOCR(ImageSource.camera); },
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_rounded),
+              title: const Text('Gallery (Screenshot) / الاستوديو'),
+              onTap: () { Navigator.pop(context); _handleOCR(ImageSource.gallery); },
+            ),
+            const SizedBox(height: 16),
+          ],
+        ),
+      ),
+    );
+  }
+
   Future<void> _handleImport(String mode) async {
     if (mode == 'image') {
-      _handleOCR();
+      _showImageSourceDialog();
       return;
     }
 
@@ -57,10 +83,7 @@ class _CallListsScreenState extends State<CallListsScreen> {
     if (userId == null) return;
 
     try {
-      FilePickerResult? result = await FilePicker.platform.pickFiles(
-        type: FileType.custom, 
-        allowedExtensions: ['xlsx', 'xls']
-      );
+      FilePickerResult? result = await FilePicker.platform.pickFiles(type: FileType.custom, allowedExtensions: ['xlsx', 'xls']);
       if (result != null) {
         await callsProvider.importFromExcel(File(result.files.single.path!), userId);
         if (callsProvider.errorMessage != null) {
@@ -80,7 +103,7 @@ class _CallListsScreenState extends State<CallListsScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
-        title: const Text('Call Lists / قوائم الاتصال', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text('My Call Lists / قوائم الاتصال', style: TextStyle(fontWeight: FontWeight.bold)),
         backgroundColor: Colors.white,
         elevation: 0,
         actions: [
@@ -91,16 +114,7 @@ class _CallListsScreenState extends State<CallListsScreen> {
         builder: (context, provider, child) {
           if (provider.isLoading) return const Center(child: CircularProgressIndicator());
           if (provider.lists.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.contact_phone_outlined, size: 64, color: Colors.grey),
-                  const SizedBox(height: 16),
-                  const Text('No lists found / لا توجد قوائم', style: TextStyle(color: Colors.grey)),
-                ],
-              ),
-            );
+            return const Center(child: Text('No lists found / لا توجد قوائم', style: TextStyle(color: Colors.grey)));
           }
 
           return ListView.builder(

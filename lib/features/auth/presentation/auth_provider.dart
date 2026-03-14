@@ -13,7 +13,8 @@ class AuthProvider with ChangeNotifier, WidgetsBindingObserver {
   UserModel? _currentUser;
   bool _isLoading = false;
   String? _errorMessage;
-  
+  String? _cachedDeviceId;
+
   UserModel? get currentUser => _currentUser;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
@@ -40,6 +41,8 @@ class AuthProvider with ChangeNotifier, WidgetsBindingObserver {
   }
 
   Future<void> _initializeAuth() async {
+    // Force load device ID first
+    _cachedDeviceId = await _getOrCreateDeviceId();
     if (_authRepository.hasSession) {
       await refreshUser(silent: true);
     }
@@ -59,43 +62,24 @@ class AuthProvider with ChangeNotifier, WidgetsBindingObserver {
   Future<String> _getOrCreateDeviceId() async {
     final prefs = await SharedPreferences.getInstance();
     String? deviceId = prefs.getString('sca_device_id');
-    if (deviceId == null) {
+    if (deviceId == null || deviceId.isEmpty) {
       deviceId = const Uuid().v4();
       await prefs.setString('sca_device_id', deviceId);
     }
+    _cachedDeviceId = deviceId;
     return deviceId;
-  }
-
-  Future<bool> register({
-    required String email,
-    required String password,
-    required String fullName,
-  }) async {
-    _setLoading(true);
-    _errorMessage = null;
-    try {
-      await _authRepository.register(email: email, password: password, fullName: fullName);
-      _setLoading(false);
-      return true;
-    } on AuthException catch (e) {
-      _errorMessage = _mapAuthError(e.message);
-      _setLoading(false);
-      return false;
-    } catch (e) {
-      _errorMessage = "حدث خطأ غير متوقع أثناء التسجيل";
-      _setLoading(false);
-      return false;
-    }
   }
 
   Future<bool> login({required String email, required String password}) async {
     if (_isLoading) return false;
     _setLoading(true);
     _errorMessage = null;
+
     try {
       final user = await _authRepository.login(email: email, password: password);
       final deviceId = await _getOrCreateDeviceId();
       await _authRepository.updateUserDeviceId(user.id, deviceId);
+      
       await refreshUser();
       _setLoading(false);
       return true;
@@ -112,13 +96,16 @@ class AuthProvider with ChangeNotifier, WidgetsBindingObserver {
 
   Future<void> refreshUser({bool silent = false}) async {
     try {
+      if (!isAuthenticated) return;
+      
       final user = await _authRepository.getCurrentUserProfile();
       if (user != null) {
-        final localDeviceId = await _getOrCreateDeviceId();
+        final localId = _cachedDeviceId ?? await _getOrCreateDeviceId();
         
-        // ✅ Improved logic: Only kick out if device IDs are explicitly different and not null
-        if (user.currentDeviceId != null && user.currentDeviceId!.isNotEmpty && user.currentDeviceId != localDeviceId) {
-          foundation.debugPrint('Security: Device mismatch. Remote: ${user.currentDeviceId}, Local: $localDeviceId');
+        // Only logout if there is an explicit different device ID in the database
+        if (user.currentDeviceId != null && 
+            user.currentDeviceId!.isNotEmpty && 
+            user.currentDeviceId != localId) {
           _errorMessage = 'تم تسجيل الدخول من جهاز آخر';
           if (!silent) notifyListeners();
           await logout();
@@ -152,12 +139,6 @@ class AuthProvider with ChangeNotifier, WidgetsBindingObserver {
   String _mapAuthError(String message) {
     if (message.contains('Invalid login credentials')) return "البريد الإلكتروني أو كلمة المرور غير صحيحة";
     if (message.contains('Email not confirmed')) return "يرجى تأكيد البريد الإلكتروني أولاً";
-    if (message.contains('User already registered')) return "هذا البريد مسجل بالفعل";
     return "فشل في العملية: $message";
-  }
-
-  void clearError() {
-    _errorMessage = null;
-    notifyListeners();
   }
 }
