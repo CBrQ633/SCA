@@ -50,7 +50,7 @@ class _CallListsScreenState extends State<CallListsScreen> with SingleTickerProv
           labelColor: theme.colorScheme.primary,
           unselectedLabelColor: Colors.grey,
           tabs: const [
-            Tab(text: 'Active / الحالية', icon: Icon(Icons.宅_rounded, size: 20)),
+            Tab(text: 'Active / الحالية', icon: Icon(Icons.list_alt_rounded, size: 20)),
             Tab(text: 'Archived / الأرشيف', icon: Icon(Icons.archive_outlined, size: 20)),
           ],
         ),
@@ -67,8 +67,7 @@ class _CallListsScreenState extends State<CallListsScreen> with SingleTickerProv
   }
 
   Widget _buildList(CallsProvider provider, {required bool isArchived}) {
-    // Note: Provider might need updating to handle active/archived separation
-    // For now, let's assume we filter local lists if they have a status
+    final theme = Theme.of(context); // ✅ Fix: Added theme definition here
     final filteredLists = provider.lists.where((l) => isArchived ? l.status == 'archived' : l.status == 'active').toList();
 
     if (provider.isLoading) return const Center(child: CircularProgressIndicator());
@@ -106,11 +105,9 @@ class _CallListsScreenState extends State<CallListsScreen> with SingleTickerProv
           ),
           confirmDismiss: (dir) async {
             if (dir == DismissDirection.startToEnd) {
-              // Archive action
               await context.read<CallsProvider>().toggleArchive(list.id, !isArchived);
               return true;
             } else {
-              // Delete action
               return await _confirmDelete(list.id, list.name);
             }
           },
