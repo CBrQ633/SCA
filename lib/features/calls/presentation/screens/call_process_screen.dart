@@ -79,7 +79,7 @@ class _CallProcessScreenState extends State<CallProcessScreen> {
     
     try {
       await _repository.updateItemStatus(currentItem.id, status, notes: notes);
-      _notesController.clear(); // ✅ Clear notes for next contact
+      _notesController.clear();
       
       if (mounted) {
         final prefs = await SharedPreferences.getInstance();
@@ -138,7 +138,12 @@ class _CallProcessScreenState extends State<CallProcessScreen> {
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(32),
-              decoration: BoxDecoration(color: theme.cardTheme.color, borderRadius: BorderRadius.circular(28), border: theme.cardTheme.shape?.side as Border?, boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 20)]),
+              decoration: BoxDecoration(
+                color: theme.cardTheme.color, 
+                borderRadius: BorderRadius.circular(28), 
+                border: Border.all(color: Colors.black.withOpacity(0.05)), // ✅ Fixed: Explicit Border
+                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 20)]
+              ),
               child: Column(
                 children: [
                   CircleAvatar(radius: 40, backgroundColor: theme.colorScheme.primary, child: Text(currentItem.name?[0] ?? '?', style: const TextStyle(fontSize: 30, color: Colors.white, fontWeight: FontWeight.bold))),
@@ -155,7 +160,6 @@ class _CallProcessScreenState extends State<CallProcessScreen> {
               _buildBtn(Icons.chat_rounded, 'WhatsApp', const Color(0xFF128C7E), () => _openWhatsApp(currentItem.phone)),
             ]),
             const SizedBox(height: 32),
-            // ✅ Optional Notes Input
             TextField(
               controller: _notesController,
               decoration: InputDecoration(
