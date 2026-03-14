@@ -25,7 +25,7 @@ class SubscriptionRequest {
     return SubscriptionRequest(
       id: json['id'] as String,
       userId: json['user_id'] as String,
-      plan_type: json['plan_type'] as String? ?? 'monthly',
+      planType: json['plan_type'] as String? ?? 'monthly',
       amount: (json['amount'] as num?)?.toDouble() ?? 0.0,
       paymentScreenshotUrl: json['payment_screenshot_url'] as String?,
       status: json['status'] as String? ?? 'pending',
@@ -60,7 +60,7 @@ class CallList {
 class CallEntry {
   final String id;
   final String listId;
-  final String? listName; // ✅ Added listName
+  final String? listName; 
   final String phoneNumber;
   final String? customerName;
   final String status; 
@@ -86,7 +86,7 @@ class CallEntry {
     return CallEntry(
       id: json['id'] as String? ?? '',
       listId: json['list_id'] as String? ?? '',
-      listName: json['list_name'] as String?, // ✅ Added listName
+      listName: json['list_name'] as String?,
       phoneNumber: (json['phone_number'] ?? json['phone']) as String? ?? '',
       customerName: (json['customer_name'] ?? json['name']) as String?,
       status: rawStatus,

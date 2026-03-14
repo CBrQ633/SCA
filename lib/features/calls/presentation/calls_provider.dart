@@ -26,6 +26,20 @@ class CallsProvider extends ChangeNotifier {
     }
   }
 
+  // ✅ Added missing deleteList method for Swipe-to-Delete
+  Future<bool> deleteList(String listId) async {
+    try {
+      await _repository.deleteCallList(listId);
+      _lists.removeWhere((l) => l.id == listId);
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _errorMessage = 'Failed to delete list: $e';
+      notifyListeners();
+      return false;
+    }
+  }
+
   Future<void> importFromExcel(File file, String userId) async {
     _setLoading(true);
     try {
@@ -43,13 +57,12 @@ class CallsProvider extends ChangeNotifier {
         await loadLists();
       }
     } catch (e) {
-      _errorMessage = 'Excel Error: $e';
+      _errorMessage = e.toString();
     } finally {
       _setLoading(false);
     }
   }
 
-  // ✅ Added missing OCR Image Import
   Future<void> importFromImage(File file, String userId) async {
     _setLoading(true);
     try {
@@ -66,10 +79,10 @@ class CallsProvider extends ChangeNotifier {
         await _repository.addItemsToList(newList.id, itemsToInsert);
         await loadLists();
       } else {
-        _errorMessage = 'No phone numbers found in image / لم يتم العثور على أرقام في الصورة';
+        _errorMessage = 'No phone numbers found in image';
       }
     } catch (e) {
-      _errorMessage = 'OCR Error: $e';
+      _errorMessage = e.toString();
     } finally {
       _setLoading(false);
     }
