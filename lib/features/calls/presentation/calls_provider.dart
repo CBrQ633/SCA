@@ -17,7 +17,11 @@ class CallsProvider extends ChangeNotifier {
   Future<void> loadLists() async {
     _setLoading(true);
     try {
-      _lists = await _repository.getMyLists();
+      // Load both active and archived lists to filter in UI or load separately if needed
+      // For simplicity, we load all and UI filters by status
+      final activeLists = await _repository.getMyLists(archived: false);
+      final archivedLists = await _repository.getMyLists(archived: true);
+      _lists = [...activeLists, ...archivedLists];
       _errorMessage = null;
     } catch (e) {
       _errorMessage = e.toString();
@@ -26,7 +30,18 @@ class CallsProvider extends ChangeNotifier {
     }
   }
 
-  // ✅ Added missing deleteList method for Swipe-to-Delete
+  Future<bool> toggleArchive(String listId, bool shouldArchive) async {
+    try {
+      await _repository.toggleArchive(listId, shouldArchive);
+      await loadLists();
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString();
+      notifyListeners();
+      return false;
+    }
+  }
+
   Future<bool> deleteList(String listId) async {
     try {
       await _repository.deleteCallList(listId);

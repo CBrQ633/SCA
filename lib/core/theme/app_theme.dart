@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 
 class AppTheme {
+  // Brand Colors
   static const Color primaryNavy = Color(0xFF0F172A);
   static const Color accentEmerald = Color(0xFF10B981);
   static const Color bgLight = Color(0xFFF1F5F9);
+  static const Color bgDark = Color(0xFF020617); // Deeper Navy for Dark Mode
 
   static ThemeData lightTheme = ThemeData(
     useMaterial3: true,
@@ -25,7 +27,7 @@ class AppTheme {
       iconTheme: IconThemeData(color: primaryNavy),
       titleTextStyle: TextStyle(color: primaryNavy, fontWeight: FontWeight.bold, fontSize: 18),
     ),
-    cardTheme: CardThemeData( // ✅ Corrected: CardThemeData instead of CardTheme
+    cardTheme: CardTheme(
       color: Colors.white,
       elevation: 0,
       shape: RoundedRectangleBorder(
@@ -40,6 +42,38 @@ class AppTheme {
     ),
   );
 
-  // Forcing Light Theme for now to ensure consistency across the app
-  static ThemeData darkTheme = lightTheme;
+  static ThemeData darkTheme = ThemeData(
+    useMaterial3: true,
+    fontFamily: 'Cairo',
+    brightness: Brightness.dark,
+    scaffoldBackgroundColor: bgDark,
+    colorScheme: const ColorScheme.dark(
+      primary: Colors.white,
+      secondary: accentEmerald,
+      surface: Color(0xFF0F172A),
+      onSurface: Colors.white,
+      onPrimary: primaryNavy,
+    ),
+    appBarTheme: const AppBarTheme(
+      backgroundColor: Color(0xFF0F172A),
+      foregroundColor: Colors.white,
+      elevation: 0,
+      centerTitle: true,
+      iconTheme: IconThemeData(color: Colors.white),
+      titleTextStyle: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
+    ),
+    cardTheme: CardTheme(
+      color: const Color(0xFF0F172A),
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: const BorderSide(color: Colors.white10),
+      ),
+    ),
+    textTheme: const TextTheme(
+      bodyLarge: TextStyle(color: Colors.white),
+      bodyMedium: TextStyle(color: Colors.white70),
+      titleMedium: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+    ),
+  );
 }

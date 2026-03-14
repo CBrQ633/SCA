@@ -83,6 +83,14 @@ class CallEntry {
     if (rawStatus == 'called') rawStatus = 'answered';
     if (rawStatus == 'no_answer') rawStatus = 'not_answered';
 
+    // ✅ Smart Date Parsing: Use updated_at if called_at is null (Common in call_list_items)
+    DateTime? parsedDate;
+    if (json['called_at'] != null) {
+      parsedDate = DateTime.parse(json['called_at'] as String);
+    } else if (json['updated_at'] != null && rawStatus != 'pending') {
+      parsedDate = DateTime.parse(json['updated_at'] as String);
+    }
+
     return CallEntry(
       id: json['id'] as String? ?? '',
       listId: json['list_id'] as String? ?? '',
@@ -90,7 +98,7 @@ class CallEntry {
       phoneNumber: (json['phone_number'] ?? json['phone']) as String? ?? '',
       customerName: (json['customer_name'] ?? json['name']) as String?,
       status: rawStatus,
-      calledAt: json['called_at'] != null ? DateTime.parse(json['called_at'] as String) : null,
+      calledAt: parsedDate,
       position: json['position'] as int? ?? 0,
     );
   }

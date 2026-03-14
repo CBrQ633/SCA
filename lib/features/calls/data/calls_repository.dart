@@ -9,20 +9,44 @@ import 'models/call_list_model.dart';
 class CallsRepository {
   final SupabaseClient _supabase = SupabaseConfig.client;
 
-  Future<List<CallListModel>> getMyLists() async {
+  Future<List<CallListModel>> getMyLists({bool archived = false}) async {
     try {
-      final response = await _supabase.from('call_lists').select().order('created_at', ascending: false);
+      final status = archived ? 'archived' : 'active';
+      final response = await _supabase
+          .from('call_lists')
+          .select()
+          .eq('status', status)
+          .order('created_at', ascending: false);
       return (response as List).map((e) => CallListModel.fromJson(e)).toList();
-    } catch (e) { throw Exception('Failed to fetch call lists: $e'); }
+    } catch (e) {
+      throw Exception('Failed to fetch call lists: $e');
+    }
   }
 
   Future<CallListModel> createList(String name, String userId) async {
-    final response = await _supabase.from('call_lists').insert({'user_id': userId, 'name': name}).select().single();
+    final response = await _supabase
+        .from('call_lists')
+        .insert({'user_id': userId, 'name': name, 'status': 'active'})
+        .select()
+        .single();
     return CallListModel.fromJson(response);
   }
 
+  // ✅ New Archive Method
+  Future<void> toggleArchive(String listId, bool shouldArchive) async {
+    await _supabase
+        .from('call_lists')
+        .update({'status': shouldArchive ? 'archived' : 'active'})
+        .eq('id', listId);
+  }
+
   Future<List<CallListItemModel>> getListItems(String listId) async {
-    final response = await _supabase.from('call_list_items').select().eq('list_id', listId).order('status', ascending: true).order('created_at', ascending: true);
+    final response = await _supabase
+        .from('call_list_items')
+        .select()
+        .eq('list_id', listId)
+        .order('status', ascending: true)
+        .order('created_at', ascending: true);
     return (response as List).map((e) => CallListItemModel.fromJson(e)).toList();
   }
 
@@ -37,37 +61,26 @@ class CallsRepository {
     if (data.isNotEmpty) await _supabase.from('call_list_items').insert(data);
   }
 
+  // ✅ Updated: Now supports Notes
   Future<void> updateItemStatus(String itemId, String status, {String? notes}) async {
-    await _supabase.from('call_list_items').update({'status': status, if (notes != null) 'notes': notes, 'updated_at': DateTime.now().toIso8601String()}).eq('id', itemId);
+    await _supabase.from('call_list_items').update({
+      'status': status,
+      if (notes != null) 'notes': notes,
+      'updated_at': DateTime.now().toIso8601String()
+    }).eq('id', itemId);
   }
 
-  // ✅ Ultra-Smart Egyptian Phone Normalizer
   String _normalizePhoneNumber(String raw) {
     if (raw.trim().isEmpty) return '';
-    
-    // 1. Keep only digits
     String digits = raw.replaceAll(RegExp(r'\D'), '');
-    
-    // 2. Handle cases like 222011... or 2010... or 010...
-    // We look for the FIRST occurrence of "01" or "1" that is part of a valid Egyptian pattern
     final egyptianPattern = RegExp(r'(01[0125]\d{8})');
     final match = egyptianPattern.firstMatch(digits);
-    
-    if (match != null) {
-      return match.group(0)!;
-    }
-
-    // 3. If it starts with 1... (and missing 0), add it
+    if (match != null) return match.group(0)!;
     final missingZeroPattern = RegExp(r'(1[0125]\d{8})');
     final matchMissingZero = missingZeroPattern.firstMatch(digits);
-    if (matchMissingZero != null) {
-      return '0${matchMissingZero.group(0)}';
-    }
-    
-    // 4. Fallback: If it's already 11 digits starting with 01
+    if (matchMissingZero != null) return '0${matchMissingZero.group(0)}';
     if (digits.length == 11 && digits.startsWith('01')) return digits;
-
-    return ''; // Invalid number
+    return '';
   }
 
   Future<List<Map<String, String>>> importFromExcel(File file) async {
@@ -104,15 +117,11 @@ class CallsRepository {
     try {
       final RecognizedText recognizedText = await textRecognizer.processImage(InputImage.fromFile(imageFile));
       final Set<String> numbers = {};
-      
       for (var block in recognizedText.blocks) {
         for (var line in block.lines) {
-          // Look for any string of digits that might contain an Egyptian number
           String cleanLine = line.text.replaceAll(RegExp(r'\D'), '');
           String norm = _normalizePhoneNumber(cleanLine);
-          if (norm.isNotEmpty) {
-            numbers.add(norm);
-          }
+          if (norm.isNotEmpty) numbers.add(norm);
         }
       }
       return numbers.toList();
