@@ -31,7 +31,6 @@ class SubscriptionRepository {
         'status': 'pending',
       });
       
-      // ✅ Update user status to pending so they know it's being reviewed
       await _supabase.from('profiles').update({'subscription_status': 'pending'}).eq('id', userId);
       
     } catch (e) {
@@ -49,6 +48,20 @@ class SubscriptionRepository {
       return List<Map<String, dynamic>>.from(response);
     } catch (e) {
       throw Exception('خطأ في جلب الطلبات: $e');
+    }
+  }
+
+  // ✅ Added missing getPendingCount method
+  Future<int> getPendingCount() async {
+    try {
+      final response = await _supabase
+          .from('subscription_requests')
+          .select('id')
+          .eq('status', 'pending');
+      return (response as List).length;
+    } catch (e) {
+      debugPrint('Error getting pending count: $e');
+      return 0;
     }
   }
 

@@ -54,39 +54,26 @@ class CallsRepository {
     return (clean.length == 11 && clean.startsWith('01')) ? clean : clean;
   }
 
-  // ✅ Smart Name & Phone Extraction from Excel
   Future<List<Map<String, String>>> importFromExcel(File file) async {
     try {
       final bytes = file.readAsBytesSync();
       final decoder = SpreadsheetDecoder.decodeBytes(bytes, update: true);
       final List<Map<String, String>> entries = [];
-
       for (var table in decoder.tables.keys) {
         final sheet = decoder.tables[table];
         if (sheet == null) continue;
-
         for (var row in sheet.rows) {
           String phone = '';
           String name = 'Unknown';
-          
-          // Pattern for common non-name keywords to exclude
           final noiseWords = RegExp(r'(عنوان|شارع|محافظة|ملاحظات|Date|Address|Status|Note|Street)', caseSensitive: false);
-
           for (var cell in row) {
             if (cell == null) continue;
             String val = cell.toString().trim();
             String norm = _normalizePhoneNumber(val);
-            
-            // Priority 1: Egyptian Phone
             if (norm.length == 11 && RegExp(r'^01[0125]').hasMatch(norm)) {
               phone = norm;
-            } 
-            // Priority 2: Smart Name Detection (If not a phone and doesn't contain noise words)
-            else if (val.length > 2 && val.length < 30 && int.tryParse(val) == null && !noiseWords.hasMatch(val)) {
-              // Prefer shorter, human-like names over long sentences
-              if (name == 'Unknown' || val.split(' ').length < name.split(' ').length) {
-                name = val;
-              }
+            } else if (val.length > 2 && val.length < 30 && int.tryParse(val) == null && !noiseWords.hasMatch(val)) {
+              if (name == 'Unknown' || val.split(' ').length < name.split(' ').length) name = val;
             }
           }
           if (phone.isNotEmpty) entries.add({'phone': phone, 'name': name});
@@ -94,6 +81,27 @@ class CallsRepository {
       }
       return entries;
     } catch (e) { throw Exception('Excel Import Error: $e'); }
+  }
+
+  // ✅ Re-added missing OCR method
+  Future<List<String>> extractNumbersFromImage(File imageFile) async {
+    final textRecognizer = TextRecognizer();
+    try {
+      final RecognizedText recognizedText = await textRecognizer.processImage(InputImage.fromFile(imageFile));
+      final phoneRegex = RegExp(r'(\+?\d[\d\s-]{7,15}\d)');
+      final Set<String> numbers = {};
+      for (var block in recognizedText.blocks) {
+        for (var line in block.lines) {
+          for (var match in phoneRegex.allMatches(line.text)) {
+            final norm = _normalizePhoneNumber(match.group(0)!);
+            if (norm.length >= 10) numbers.add(norm);
+          }
+        }
+      }
+      return numbers.toList();
+    } finally {
+      textRecognizer.close();
+    }
   }
 
   Future<void> deleteCallList(String listId) async {
