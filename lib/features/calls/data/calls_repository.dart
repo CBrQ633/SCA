@@ -41,17 +41,33 @@ class CallsRepository {
     await _supabase.from('call_list_items').update({'status': status, if (notes != null) 'notes': notes, 'updated_at': DateTime.now().toIso8601String()}).eq('id', itemId);
   }
 
+  // ✅ Ultra-Smart Egyptian Phone Normalizer
   String _normalizePhoneNumber(String raw) {
     if (raw.trim().isEmpty) return '';
-    String clean = raw.replaceAll(RegExp(r'[^\d+]'), '');
-    if (raw.toUpperCase().contains('E')) {
-      try { clean = double.parse(raw).toStringAsFixed(0); } catch (_) {}
+    
+    // 1. Keep only digits
+    String digits = raw.replaceAll(RegExp(r'\D'), '');
+    
+    // 2. Handle cases like 222011... or 2010... or 010...
+    // We look for the FIRST occurrence of "01" or "1" that is part of a valid Egyptian pattern
+    final egyptianPattern = RegExp(r'(01[0125]\d{8})');
+    final match = egyptianPattern.firstMatch(digits);
+    
+    if (match != null) {
+      return match.group(0)!;
     }
-    if (clean.endsWith('.0')) clean = clean.substring(0, clean.length - 2);
-    if (clean.startsWith('+20')) clean = clean.substring(3);
-    else if (clean.startsWith('201')) clean = clean.substring(2);
-    if (clean.length == 10 && RegExp(r'^(10|11|12|15)').hasMatch(clean)) return '0$clean';
-    return (clean.length == 11 && clean.startsWith('01')) ? clean : clean;
+
+    // 3. If it starts with 1... (and missing 0), add it
+    final missingZeroPattern = RegExp(r'(1[0125]\d{8})');
+    final matchMissingZero = missingZeroPattern.firstMatch(digits);
+    if (matchMissingZero != null) {
+      return '0${matchMissingZero.group(0)}';
+    }
+    
+    // 4. Fallback: If it's already 11 digits starting with 01
+    if (digits.length == 11 && digits.startsWith('01')) return digits;
+
+    return ''; // Invalid number
   }
 
   Future<List<Map<String, String>>> importFromExcel(File file) async {
@@ -70,7 +86,7 @@ class CallsRepository {
             if (cell == null) continue;
             String val = cell.toString().trim();
             String norm = _normalizePhoneNumber(val);
-            if (norm.length == 11 && RegExp(r'^01[0125]').hasMatch(norm)) {
+            if (norm.isNotEmpty) {
               phone = norm;
             } else if (val.length > 2 && val.length < 30 && int.tryParse(val) == null && !noiseWords.hasMatch(val)) {
               if (name == 'Unknown' || val.split(' ').length < name.split(' ').length) name = val;
@@ -83,18 +99,19 @@ class CallsRepository {
     } catch (e) { throw Exception('Excel Import Error: $e'); }
   }
 
-  // ✅ Re-added missing OCR method
   Future<List<String>> extractNumbersFromImage(File imageFile) async {
     final textRecognizer = TextRecognizer();
     try {
       final RecognizedText recognizedText = await textRecognizer.processImage(InputImage.fromFile(imageFile));
-      final phoneRegex = RegExp(r'(\+?\d[\d\s-]{7,15}\d)');
       final Set<String> numbers = {};
+      
       for (var block in recognizedText.blocks) {
         for (var line in block.lines) {
-          for (var match in phoneRegex.allMatches(line.text)) {
-            final norm = _normalizePhoneNumber(match.group(0)!);
-            if (norm.length >= 10) numbers.add(norm);
+          // Look for any string of digits that might contain an Egyptian number
+          String cleanLine = line.text.replaceAll(RegExp(r'\D'), '');
+          String norm = _normalizePhoneNumber(cleanLine);
+          if (norm.isNotEmpty) {
+            numbers.add(norm);
           }
         }
       }

@@ -107,7 +107,7 @@ class _CallProcessScreenState extends State<CallProcessScreen> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => AlertDialog(
+      builder: (ctx) => AlertDialog(
         backgroundColor: Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         title: const Text('All Done! / انتهيت', style: TextStyle(fontWeight: FontWeight.bold)),
@@ -115,10 +115,15 @@ class _CallProcessScreenState extends State<CallProcessScreen> {
         actions: [
           ElevatedButton(
             onPressed: () {
-              // ✅ Fix: Use go instead of double pop to avoid black screen
+              // ✅ Correct Sequence: Close Dialog THEN Navigate
+              Navigator.of(ctx).pop(); 
               context.go(AppConstants.routeHome);
             },
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0F172A), foregroundColor: Colors.white),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF0F172A), 
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
             child: const Text('OK / حسناً'),
           ),
         ],
@@ -225,7 +230,16 @@ class _CallProcessScreenState extends State<CallProcessScreen> {
               ],
             ),
             const SizedBox(height: 16),
-            TextButton(onPressed: () => setState(() => _currentIndex < _items.length - 1 ? _currentIndex++ : _showCompletionDialog()), child: const Text('Skip / تخطي', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold))),
+            TextButton(
+              onPressed: () {
+                if (_currentIndex < _items.length - 1) {
+                  setState(() => _currentIndex++);
+                } else {
+                  _showCompletionDialog();
+                }
+              },
+              child: const Text('Skip / تخطي', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+            ),
           ],
         ),
       ),
