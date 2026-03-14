@@ -21,25 +21,52 @@ class _CallListsScreenState extends State<CallListsScreen> {
   @override
   void initState() {
     super.initState();
-    // Load lists only once on init
     Future.microtask(() => context.read<CallsProvider>().loadLists());
   }
 
+  Future<void> _handleOCR() async {
+    final callsProvider = context.read<CallsProvider>();
+    final userId = context.read<AuthProvider>().currentUser?.id;
+    if (userId == null) return;
+
+    final picker = ImagePicker();
+    final XFile? image = await picker.pickImage(source: ImageSource.camera);
+
+    if (image != null) {
+      if (mounted) {
+        AppNotifications.showSuccess(context, 'Processing image... / جاري معالجة الصورة');
+        await callsProvider.importFromImage(File(image.path), userId);
+        if (callsProvider.errorMessage != null) {
+          AppNotifications.showError(context, callsProvider.errorMessage!);
+          callsProvider.clearError();
+        } else {
+          AppNotifications.showSuccess(context, 'Numbers extracted successfully! / تم استخراج الأرقام بنجاح');
+        }
+      }
+    }
+  }
+
   Future<void> _handleImport(String mode) async {
+    if (mode == 'image') {
+      _handleOCR();
+      return;
+    }
+
     final callsProvider = context.read<CallsProvider>();
     final userId = context.read<AuthProvider>().currentUser?.id;
     if (userId == null) return;
 
     try {
-      if (mode == 'excel') {
-        FilePickerResult? result = await FilePicker.platform.pickFiles(type: FileType.custom, allowedExtensions: ['xlsx', 'xls']);
-        if (result != null) {
-          await callsProvider.importFromExcel(File(result.files.single.path!), userId);
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.custom, 
+        allowedExtensions: ['xlsx', 'xls']
+      );
+      if (result != null) {
+        await callsProvider.importFromExcel(File(result.files.single.path!), userId);
+        if (callsProvider.errorMessage != null) {
+          if (mounted) AppNotifications.showError(context, callsProvider.errorMessage!);
+          callsProvider.clearError();
         }
-      }
-      if (callsProvider.errorMessage != null) {
-        if (mounted) AppNotifications.showError(context, callsProvider.errorMessage!);
-        callsProvider.clearError();
       }
     } catch (e) {
       if (mounted) AppNotifications.showError(context, 'Error: $e');
@@ -53,11 +80,11 @@ class _CallListsScreenState extends State<CallListsScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
-        title: const Text('My Call Lists / قوائم الاتصال', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text('Call Lists / قوائم الاتصال', style: TextStyle(fontWeight: FontWeight.bold)),
         backgroundColor: Colors.white,
         elevation: 0,
         actions: [
-          IconButton(icon: const Icon(Icons.refresh_rounded, color: navy), onPressed: () => context.read<CallsProvider>().loadLists()),
+          IconButton(icon: const Icon(Icons.sync_rounded), onPressed: () => context.read<CallsProvider>().loadLists()),
         ],
       ),
       body: Consumer<CallsProvider>(
@@ -70,7 +97,7 @@ class _CallListsScreenState extends State<CallListsScreen> {
                 children: [
                   const Icon(Icons.contact_phone_outlined, size: 64, color: Colors.grey),
                   const SizedBox(height: 16),
-                  const Text('No call lists yet / لا توجد قوائم', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+                  const Text('No lists found / لا توجد قوائم', style: TextStyle(color: Colors.grey)),
                 ],
               ),
             );
@@ -85,10 +112,10 @@ class _CallListsScreenState extends State<CallListsScreen> {
                 margin: const EdgeInsets.only(bottom: 12),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                 child: ListTile(
-                  leading: CircleAvatar(backgroundColor: navy, child: const Icon(Icons.list_rounded, color: Colors.white)),
+                  leading: const CircleAvatar(backgroundColor: navy, child: Icon(Icons.list_alt_rounded, color: Colors.white)),
                   title: Text(list.name, style: const TextStyle(fontWeight: FontWeight.bold, color: navy)),
                   subtitle: Text(list.status, style: const TextStyle(fontSize: 12)),
-                  trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 16, color: Colors.grey),
+                  trailing: const Icon(Icons.chevron_right_rounded),
                   onTap: () => context.push('${AppConstants.routeHome}/${list.id}'),
                 ),
               );
@@ -98,14 +125,11 @@ class _CallListsScreenState extends State<CallListsScreen> {
       ),
       floatingActionButton: SpeedDial(
         icon: Icons.add_rounded,
-        activeIcon: Icons.close_rounded,
         backgroundColor: const Color(0xFF10B981),
         foregroundColor: Colors.white,
-        overlayColor: Colors.black,
-        overlayOpacity: 0.4,
         children: [
-          SpeedDialChild(child: const Icon(Icons.upload_file_rounded), label: 'Import Excel', onTap: () => _handleImport('excel')),
-          SpeedDialChild(child: const Icon(Icons.camera_alt_rounded), label: 'OCR Import', onTap: () => _handleImport('image')),
+          SpeedDialChild(child: const Icon(Icons.upload_file_rounded), label: 'Excel Import', onTap: () => _handleImport('excel')),
+          SpeedDialChild(child: const Icon(Icons.camera_alt_rounded), label: 'Image OCR', onTap: () => _handleImport('image')),
         ],
       ),
     );

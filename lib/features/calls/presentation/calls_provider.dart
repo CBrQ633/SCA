@@ -26,31 +26,6 @@ class CallsProvider extends ChangeNotifier {
     }
   }
 
-  Future<bool> createEmptyList(String name, String userId) async {
-    try {
-      await _repository.createList(name, userId);
-      await loadLists();
-      return true;
-    } catch (e) {
-      _errorMessage = e.toString();
-      notifyListeners();
-      return false;
-    }
-  }
-
-  Future<bool> deleteList(String listId) async {
-    try {
-      await _repository.deleteCallList(listId);
-      _lists.removeWhere((l) => l.id == listId);
-      notifyListeners();
-      return true;
-    } catch (e) {
-      _errorMessage = e.toString();
-      notifyListeners();
-      return false;
-    }
-  }
-
   Future<void> importFromExcel(File file, String userId) async {
     _setLoading(true);
     try {
@@ -60,15 +35,41 @@ class CallsProvider extends ChangeNotifier {
         final newList = await _repository.createList(listName, userId);
 
         final itemsToInsert = importedItems.map((e) => {
-          'name': e['customer_name'] ?? e['name'] ?? 'Unknown',
-          'phone': e['phone_number'] ?? e['phone'] ?? '',
+          'name': e['name'] ?? 'Unknown',
+          'phone': e['phone'] ?? '',
         }).toList();
 
         await _repository.addItemsToList(newList.id, itemsToInsert);
         await loadLists();
       }
     } catch (e) {
-      _errorMessage = e.toString();
+      _errorMessage = 'Excel Error: $e';
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  // ✅ Added missing OCR Image Import
+  Future<void> importFromImage(File file, String userId) async {
+    _setLoading(true);
+    try {
+      final numbers = await _repository.extractNumbersFromImage(file);
+      if (numbers.isNotEmpty) {
+        final listName = 'Image OCR: ${DateTime.now().hour}:${DateTime.now().minute}';
+        final newList = await _repository.createList(listName, userId);
+
+        final itemsToInsert = numbers.map((phone) => {
+          'name': 'Extracted Contact',
+          'phone': phone,
+        }).toList();
+
+        await _repository.addItemsToList(newList.id, itemsToInsert);
+        await loadLists();
+      } else {
+        _errorMessage = 'No phone numbers found in image / لم يتم العثور على أرقام في الصورة';
+      }
+    } catch (e) {
+      _errorMessage = 'OCR Error: $e';
     } finally {
       _setLoading(false);
     }

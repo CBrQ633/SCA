@@ -17,15 +17,10 @@ class SubscriptionRepository {
 
       String publicUrl;
       try {
-        await _supabase.storage.from('payment_proofs').upload(
-              fileName,
-              proofImage,
-              fileOptions: const FileOptions(cacheControl: '3600', upsert: false),
-            );
+        await _supabase.storage.from('payment_proofs').upload(fileName, proofImage);
         publicUrl = _supabase.storage.from('payment_proofs').getPublicUrl(fileName);
-      } catch (storageError) {
-        publicUrl = 'pending_upload_$fileName';
-        debugPrint('Storage upload failed: $storageError');
+      } catch (e) {
+        throw Exception('فشل في رفع صورة الإيصال، تأكد من اتصال الإنترنت');
       }
 
       await _supabase.from('subscription_requests').insert({
@@ -35,8 +30,12 @@ class SubscriptionRepository {
         'payment_screenshot_url': publicUrl,
         'status': 'pending',
       });
+      
+      // ✅ Update user status to pending so they know it's being reviewed
+      await _supabase.from('profiles').update({'subscription_status': 'pending'}).eq('id', userId);
+      
     } catch (e) {
-      throw Exception('Failed to create subscription request: $e');
+      throw Exception('حدث خطأ أثناء إرسال الطلب: $e');
     }
   }
 
@@ -44,33 +43,20 @@ class SubscriptionRepository {
     try {
       final response = await _supabase
           .from('subscription_requests')
-          .select('*, profiles!user_id(email, full_name)')
+          .select('*, profiles!user_id(email, full_name)') 
           .eq('status', 'pending')
           .order('created_at', ascending: false);
-
       return List<Map<String, dynamic>>.from(response);
     } catch (e) {
-      throw Exception('Failed to fetch pending requests: $e');
-    }
-  }
-
-  Future<int> getPendingCount() async {
-    try {
-      final response = await _supabase
-          .from('subscription_requests')
-          .select('id')
-          .eq('status', 'pending');
-      return (response as List).length;
-    } catch (e) {
-      return 0;
+      throw Exception('خطأ في جلب الطلبات: $e');
     }
   }
 
   Future<void> approveRequest(String requestId, String userId, String planType) async {
     try {
       final now = DateTime.now();
-      DateTime endDate = planType == 'quarterly'
-          ? now.add(const Duration(days: 90))
+      DateTime endDate = planType == 'quarterly' 
+          ? now.add(const Duration(days: 90)) 
           : now.add(const Duration(days: 30));
 
       await _supabase.from('subscription_requests').update({'status': 'approved'}).eq('id', requestId);
@@ -81,15 +67,11 @@ class SubscriptionRepository {
         'subscription_end': endDate.toIso8601String(),
       }).eq('id', userId);
     } catch (e) {
-      throw Exception('Failed to approve request: $e');
+      throw Exception('فشل في تفعيل الاشتراك: $e');
     }
   }
 
   Future<void> rejectRequest(String requestId) async {
-    try {
-      await _supabase.from('subscription_requests').update({'status': 'rejected'}).eq('id', requestId);
-    } catch (e) {
-      throw Exception('Failed to reject request: $e');
-    }
+    await _supabase.from('subscription_requests').update({'status': 'rejected'}).eq('id', requestId);
   }
 }
