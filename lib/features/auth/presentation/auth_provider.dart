@@ -41,7 +41,6 @@ class AuthProvider with ChangeNotifier, WidgetsBindingObserver {
   }
 
   Future<void> _initializeAuth() async {
-    // Force load device ID first
     _cachedDeviceId = await _getOrCreateDeviceId();
     if (_authRepository.hasSession) {
       await refreshUser(silent: true);
@@ -68,6 +67,35 @@ class AuthProvider with ChangeNotifier, WidgetsBindingObserver {
     }
     _cachedDeviceId = deviceId;
     return deviceId;
+  }
+
+  // ✅ Re-added missing register method
+  Future<bool> register({
+    required String email,
+    required String password,
+    required String fullName,
+  }) async {
+    if (_isLoading) return false;
+    _setLoading(true);
+    _errorMessage = null;
+
+    try {
+      await _authRepository.register(
+        email: email,
+        password: password,
+        fullName: fullName,
+      );
+      _setLoading(false);
+      return true;
+    } on AuthException catch (e) {
+      _errorMessage = _mapAuthError(e.message);
+      _setLoading(false);
+      return false;
+    } catch (e) {
+      _errorMessage = "حدث خطأ غير متوقع أثناء التسجيل";
+      _setLoading(false);
+      return false;
+    }
   }
 
   Future<bool> login({required String email, required String password}) async {
@@ -102,7 +130,6 @@ class AuthProvider with ChangeNotifier, WidgetsBindingObserver {
       if (user != null) {
         final localId = _cachedDeviceId ?? await _getOrCreateDeviceId();
         
-        // Only logout if there is an explicit different device ID in the database
         if (user.currentDeviceId != null && 
             user.currentDeviceId!.isNotEmpty && 
             user.currentDeviceId != localId) {
@@ -139,6 +166,12 @@ class AuthProvider with ChangeNotifier, WidgetsBindingObserver {
   String _mapAuthError(String message) {
     if (message.contains('Invalid login credentials')) return "البريد الإلكتروني أو كلمة المرور غير صحيحة";
     if (message.contains('Email not confirmed')) return "يرجى تأكيد البريد الإلكتروني أولاً";
+    if (message.contains('User already registered')) return "هذا البريد مسجل بالفعل";
     return "فشل في العملية: $message";
+  }
+
+  void clearError() {
+    _errorMessage = null;
+    notifyListeners();
   }
 }
