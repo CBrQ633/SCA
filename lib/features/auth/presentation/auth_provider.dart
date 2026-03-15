@@ -8,13 +8,16 @@ class AuthProvider with ChangeNotifier {
   UserModel? _currentUser;
   bool _isLoading = false;
   String? _errorMessage;
-  bool _isFirstLogin = false; // Added to track first-time login
+  bool _isFirstLogin = false;
 
   UserModel? get currentUser => _currentUser;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
   bool get isAdmin => _currentUser?.role == 'admin';
   bool get isFirstLogin => _isFirstLogin;
+  
+  // ✅ Added missing isAuthenticated getter
+  bool get isAuthenticated => _currentUser != null;
 
   AuthProvider() {
     _loadUser();
@@ -35,7 +38,6 @@ class AuthProvider with ChangeNotifier {
       if (user != null) {
         _currentUser = user;
         
-        // Check if this is the first time logging in on this device
         final prefs = await SharedPreferences.getInstance();
         _isFirstLogin = !(prefs.getBool('has_logged_before') ?? false);
         if (_isFirstLogin) {
