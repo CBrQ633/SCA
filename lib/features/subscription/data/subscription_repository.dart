@@ -17,8 +17,9 @@ class SubscriptionRepository {
 
       String publicUrl;
       try {
-        await _supabase.storage.from('payment_proofs').upload(fileName, proofImage);
-        publicUrl = _supabase.storage.from('payment_proofs').getPublicUrl(fileName);
+        final storagePath = 'proofs/$fileName';
+        await _supabase.storage.from('payment_proofs').upload(storagePath, proofImage);
+        publicUrl = _supabase.storage.from('payment_proofs').getPublicUrl(storagePath);
       } catch (e) {
         throw Exception('فشل في رفع صورة الإيصال، تأكد من اتصال الإنترنت');
       }
@@ -42,7 +43,7 @@ class SubscriptionRepository {
     try {
       final response = await _supabase
           .from('subscription_requests')
-          .select('*, profiles!user_id(email, full_name)') 
+          .select('*, profiles!user_id(email, full_name, fcm_token)') 
           .eq('status', 'pending')
           .order('created_at', ascending: false);
       return List<Map<String, dynamic>>.from(response);
@@ -51,7 +52,6 @@ class SubscriptionRepository {
     }
   }
 
-  // ✅ Added missing getPendingCount method
   Future<int> getPendingCount() async {
     try {
       final response = await _supabase
@@ -84,7 +84,18 @@ class SubscriptionRepository {
     }
   }
 
-  Future<void> rejectRequest(String requestId) async {
-    await _supabase.from('subscription_requests').update({'status': 'rejected'}).eq('id', requestId);
+  Future<void> rejectRequest(String requestId, String userId, {String? reason}) async {
+    try {
+      await _supabase.from('subscription_requests').update({
+        'status': 'rejected',
+        'reject_reason': reason,
+      }).eq('id', requestId);
+      
+      await _supabase.from('profiles').update({
+        'subscription_status': 'none'
+      }).eq('id', userId);
+    } catch (e) {
+      throw Exception('فشل في رفض الطلب: $e');
+    }
   }
 }

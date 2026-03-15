@@ -23,16 +23,33 @@ class _CallProcessScreenState extends State<CallProcessScreen> {
   bool _isLoading = true;
   bool _isFinished = false;
 
+  // WhatsApp Templates State
+  String _whatsappTemplate = '';
+
   @override
   void initState() {
     super.initState();
     _loadPendingItems();
+    _loadWhatsAppTemplate();
   }
 
   @override
   void dispose() {
     _notesController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadWhatsAppTemplate() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _whatsappTemplate = prefs.getString('whatsapp_template') ?? '';
+    });
+  }
+
+  Future<void> _saveWhatsAppTemplate(String template) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('whatsapp_template', template);
+    setState(() => _whatsappTemplate = template);
   }
 
   Future<void> _loadPendingItems() async {
@@ -62,10 +79,15 @@ class _CallProcessScreenState extends State<CallProcessScreen> {
     if (await canLaunchUrl(launchUri)) await launchUrl(launchUri);
   }
 
-  Future<void> _openWhatsApp(String phoneNumber) async {
+  Future<void> _openWhatsApp(String phoneNumber, String? name) async {
     String cleanPhone = phoneNumber.replaceAll(RegExp(r'\D'), '');
     if (cleanPhone.startsWith('0') && cleanPhone.length == 11) cleanPhone = '20${cleanPhone.substring(1)}';
-    final Uri launchUri = Uri.parse('https://wa.me/$cleanPhone');
+    
+    // Process template: replace {name} with actual name
+    String message = _whatsappTemplate.replaceAll('{name}', name ?? '');
+    String encodedMsg = Uri.encodeComponent(message);
+    
+    final Uri launchUri = Uri.parse('https://wa.me/$cleanPhone?text=$encodedMsg');
     if (await canLaunchUrl(launchUri)) {
       await launchUrl(launchUri, mode: LaunchMode.externalApplication);
       _updateStatus('whatsapp');
@@ -116,6 +138,41 @@ class _CallProcessScreenState extends State<CallProcessScreen> {
     );
   }
 
+  void _showTemplateDialog() {
+    final controller = TextEditingController(text: _whatsappTemplate);
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('WhatsApp Template'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Use {name} to insert contact name automatically.', style: TextStyle(fontSize: 12, color: Colors.grey)),
+            const SizedBox(height: 12),
+            TextField(
+              controller: controller,
+              maxLines: 4,
+              decoration: const InputDecoration(
+                hintText: 'Enter your message template here...',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () {
+              _saveWhatsAppTemplate(controller.text);
+              Navigator.pop(ctx);
+            },
+            child: const Text('Save Template'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -129,6 +186,13 @@ class _CallProcessScreenState extends State<CallProcessScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text('Call ${_currentIndex + 1} / ${_items.length}', style: const TextStyle(fontSize: 16)),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings_suggest_rounded, color: Color(0xFF128C7E)),
+            tooltip: 'WhatsApp Template',
+            onPressed: _showTemplateDialog,
+          ),
+        ],
         bottom: PreferredSize(preferredSize: const Size.fromHeight(4), child: LinearProgressIndicator(value: (_currentIndex + 1) / _items.length, backgroundColor: theme.colorScheme.surface, valueColor: AlwaysStoppedAnimation<Color>(theme.colorScheme.secondary))),
       ),
       body: SingleChildScrollView(
@@ -141,7 +205,7 @@ class _CallProcessScreenState extends State<CallProcessScreen> {
               decoration: BoxDecoration(
                 color: theme.cardTheme.color, 
                 borderRadius: BorderRadius.circular(28), 
-                border: Border.all(color: Colors.black.withOpacity(0.05)), // ✅ Fixed: Explicit Border
+                border: Border.all(color: Colors.black.withOpacity(0.05)),
                 boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 20)]
               ),
               child: Column(
@@ -157,8 +221,15 @@ class _CallProcessScreenState extends State<CallProcessScreen> {
             const SizedBox(height: 32),
             Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
               _buildBtn(Icons.call_rounded, 'Call', Colors.blue, () => _makeCall(currentItem.phone)),
-              _buildBtn(Icons.chat_rounded, 'WhatsApp', const Color(0xFF128C7E), () => _openWhatsApp(currentItem.phone)),
+              _buildBtn(Icons.chat_rounded, 'WhatsApp', const Color(0xFF128C7E), () => _openWhatsApp(currentItem.phone, currentItem.name)),
             ]),
+            const SizedBox(height: 12),
+            if (_whatsappTemplate.isNotEmpty)
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(color: Colors.green.withOpacity(0.05), borderRadius: BorderRadius.circular(8)),
+                child: Text('Template Active / الرسالة الجاهزة مفعلة', style: TextStyle(fontSize: 10, color: Colors.green[700], fontWeight: FontWeight.bold)),
+              ),
             const SizedBox(height: 32),
             TextField(
               controller: _notesController,

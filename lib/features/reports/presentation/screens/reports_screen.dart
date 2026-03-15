@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import '../../data/reports_repository.dart';
 import '../../data/models/report_stats.dart';
 import '../../../../core/services/excel_service.dart';
 import '../../../../core/components/app_logo.dart';
-import '../../../../features/auth/presentation/auth_provider.dart';
 import '../../../../shared/services/models.dart';
+import 'package:animate_do/animate_do.dart';
 
 class ReportsScreen extends StatefulWidget {
   const ReportsScreen({super.key});
@@ -27,6 +26,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
   }
 
   Future<void> _loadStats() async {
+    setState(() => _isLoading = true);
     try {
       final callStats = await _repository.getCallStats();
       final allCalls = await _repository.getCallDetails();
@@ -44,14 +44,18 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
   double get _successRate {
     if (_callStats == null || _callStats!.totalCalls == 0) return 0.0;
-    return (_callStats!.answered / _callStats!.totalCalls);
+    // Success rate based on Answered / (Answered + No Answer)
+    int totalAttempted = _callStats!.answered + _callStats!.noAnswer;
+    if (totalAttempted == 0) return 0.0;
+    return (_callStats!.answered / totalAttempted);
   }
 
   void _showDetailsDialog(String title, List<CallEntry> filteredCalls) {
+    final theme = Theme.of(context);
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.white,
+      backgroundColor: theme.scaffoldBackgroundColor,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (context) => DraggableScrollableSheet(
         initialChildSize: 0.7,
@@ -66,7 +70,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                 children: [
                   Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                   IconButton(
-                    icon: const Icon(Icons.file_download_outlined, color: Color(0xFF10B981)),
+                    icon: Icon(Icons.file_download_outlined, color: theme.colorScheme.secondary),
                     onPressed: () async {
                       Navigator.pop(context);
                       await ExcelService().generateAndShareCallReport(filteredCalls, title);
@@ -85,10 +89,18 @@ class _ReportsScreenState extends State<ReportsScreen> {
                     itemBuilder: (context, index) {
                       final call = filteredCalls[index];
                       return ListTile(
-                        leading: CircleAvatar(backgroundColor: const Color(0xFFF1F5F9), child: Text('${index + 1}', style: const TextStyle(fontSize: 12, color: Colors.black))),
-                        title: Text(call.customerName ?? 'Unknown'),
-                        subtitle: Text(call.phoneNumber),
-                        trailing: Icon(call.isAnswered ? Icons.check_circle : Icons.cancel, color: call.isAnswered ? Colors.green : Colors.red, size: 16),
+                        leading: CircleAvatar(
+                          backgroundColor: theme.colorScheme.primary.withOpacity(0.05), 
+                          child: Text('${index + 1}', style: TextStyle(fontSize: 12, color: theme.colorScheme.primary))
+                        ),
+                        title: Text(call.customerName ?? 'Unknown', style: const TextStyle(fontWeight: FontWeight.bold)),
+                        subtitle: Text('${call.phoneNumber}\n${call.listName ?? ""}', style: const TextStyle(fontSize: 11)),
+                        trailing: Icon(
+                          call.isAnswered ? Icons.check_circle_rounded : Icons.cancel_rounded, 
+                          color: call.isAnswered ? Colors.green : Colors.redAccent, 
+                          size: 20
+                        ),
+                        isThreeLine: true,
                       );
                     },
                   ),
@@ -104,12 +116,12 @@ class _ReportsScreenState extends State<ReportsScreen> {
     final theme = Theme.of(context);
     
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
         title: const Text('My Performance / إنجازاتي', style: TextStyle(fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.white,
-        elevation: 0,
         centerTitle: true,
+        actions: [
+          IconButton(onPressed: _loadStats, icon: const Icon(Icons.refresh_rounded)),
+        ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -118,57 +130,97 @@ class _ReportsScreenState extends State<ReportsScreen> {
               child: ListView(
                 padding: const EdgeInsets.all(24),
                 children: [
-                  const Center(child: AppLogo(size: 60, showText: true)),
+                  FadeInDown(child: const Center(child: AppLogo(size: 60, showText: true))),
                   const SizedBox(height: 40),
                   
-                  // Circular Progress
-                  Center(
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        SizedBox(
-                          width: 150, height: 150,
-                          child: CircularProgressIndicator(
-                            value: _successRate,
-                            strokeWidth: 12,
-                            backgroundColor: Colors.white,
-                            valueColor: AlwaysStoppedAnimation<Color>(theme.colorScheme.secondary),
+                  // Circular Progress Dashboard
+                  FadeIn(
+                    child: Center(
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          SizedBox(
+                            width: 180, height: 180,
+                            child: CircularProgressIndicator(
+                              value: _successRate,
+                              strokeWidth: 15,
+                              backgroundColor: theme.colorScheme.primary.withOpacity(0.05),
+                              valueColor: AlwaysStoppedAnimation<Color>(theme.colorScheme.secondary),
+                            ),
                           ),
-                        ),
-                        Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text('${(_successRate * 100).toStringAsFixed(1)}%', style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w900, color: Color(0xFF0F172A))),
-                            const Text('Success Rate', style: TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.bold)),
-                          ],
-                        ),
-                      ],
+                          Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                '${(_successRate * 100).toInt()}%', 
+                                style: TextStyle(fontSize: 40, fontWeight: FontWeight.w900, color: theme.colorScheme.onSurface)
+                              ),
+                              const Text('SUCCESS RATE', style: TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                   const SizedBox(height: 48),
 
-                  _buildSectionHeader('Call Statistics / الإحصائيات'),
+                  _buildSectionHeader('Key Metrics / المقاييس الأساسية', theme),
                   const SizedBox(height: 16),
                   
-                  _buildStatCard('Total Logged', _callStats?.totalCalls.toString() ?? '0', Icons.phone_android_rounded, const Color(0xFF0F172A)),
+                  FadeInUp(
+                    child: _buildStatCard(
+                      theme,
+                      'Total Attempted', 
+                      (_callStats!.answered + _callStats!.noAnswer).toString(), 
+                      Icons.insights_rounded, 
+                      theme.colorScheme.primary
+                    ),
+                  ),
                   const SizedBox(height: 16),
                   
                   Row(
                     children: [
                       Expanded(
-                        child: InkWell(
-                          onTap: () => _showDetailsDialog('Answered Calls', _allCalls.where((c) => c.isAnswered).toList()),
-                          child: _buildStatCard('Answered', _callStats?.answered.toString() ?? '0', Icons.phone_callback_rounded, const Color(0xFF10B981), compact: true),
+                        child: FadeInLeft(
+                          child: InkWell(
+                            onTap: () => _showDetailsDialog('Answered Calls', _allCalls.where((c) => c.isAnswered).toList()),
+                            child: _buildStatCard(theme, 'Answered', _callStats?.answered.toString() ?? '0', Icons.phone_callback_rounded, Colors.green, compact: true),
+                          ),
                         ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
-                        child: InkWell(
-                          onTap: () => _showDetailsDialog('Missed Calls', _allCalls.where((c) => c.isNotAnswered).toList()),
-                          child: _buildStatCard('Missed', _callStats?.noAnswer.toString() ?? '0', Icons.phone_missed_rounded, Colors.redAccent, compact: true),
+                        child: FadeInRight(
+                          child: InkWell(
+                            onTap: () => _showDetailsDialog('Missed Calls', _allCalls.where((c) => c.isNotAnswered).toList()),
+                            child: _buildStatCard(theme, 'Missed', _callStats?.noAnswer.toString() ?? '0', Icons.phone_missed_rounded, Colors.redAccent, compact: true),
+                          ),
                         ),
                       ),
                     ],
+                  ),
+                  const SizedBox(height: 16),
+                  
+                  FadeInUp(
+                    child: InkWell(
+                      onTap: () => _showDetailsDialog('Full Call History', _allCalls),
+                      child: Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.primary.withOpacity(0.05),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: theme.colorScheme.primary.withOpacity(0.1)),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.history_rounded, size: 18, color: theme.colorScheme.primary),
+                            const SizedBox(width: 8),
+                            Text('View All History / سجل المكالمات كامل', style: TextStyle(fontWeight: FontWeight.bold, color: theme.colorScheme.primary, fontSize: 13)),
+                          ],
+                        ),
+                      ),
+                    ),
                   ),
                   const SizedBox(height: 40),
                 ],
@@ -177,21 +229,34 @@ class _ReportsScreenState extends State<ReportsScreen> {
     );
   }
 
-  Widget _buildSectionHeader(String title) {
-    return Text(title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.blueGrey, letterSpacing: 1.2));
+  Widget _buildSectionHeader(String title, ThemeData theme) {
+    return Text(title, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: theme.colorScheme.secondary, letterSpacing: 1.2));
   }
 
-  Widget _buildStatCard(String title, String value, IconData icon, Color color, {bool compact = false}) {
+  Widget _buildStatCard(ThemeData theme, String title, String value, IconData icon, Color color, {bool compact = false}) {
     return Container(
       padding: EdgeInsets.all(compact ? 20 : 24),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4))]),
+      decoration: BoxDecoration(
+        color: theme.cardTheme.color, 
+        borderRadius: BorderRadius.circular(24),
+        border: theme.cardTheme.shape is RoundedRectangleBorder 
+          ? (theme.cardTheme.shape as RoundedRectangleBorder).side 
+          : null,
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4))],
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: color, size: 20),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Icon(icon, color: color, size: 20),
+              if (!compact) Icon(Icons.arrow_forward_ios_rounded, size: 12, color: theme.hintColor.withOpacity(0.3)),
+            ],
+          ),
           const SizedBox(height: 16),
-          Text(value, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: Color(0xFF0F172A))),
-          Text(title, style: const TextStyle(color: Colors.grey, fontSize: 11, fontWeight: FontWeight.w600)),
+          Text(value, style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: theme.colorScheme.onSurface)),
+          Text(title, style: TextStyle(color: theme.hintColor, fontSize: 11, fontWeight: FontWeight.w600)),
         ],
       ),
     );

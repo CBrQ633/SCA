@@ -9,16 +9,16 @@ class CallsProvider extends ChangeNotifier {
   List<CallListModel> _lists = [];
   bool _isLoading = false;
   String? _errorMessage;
+  Map<String, dynamic>? _lastImportSummary;
 
   List<CallListModel> get lists => _lists;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
+  Map<String, dynamic>? get lastImportSummary => _lastImportSummary;
 
   Future<void> loadLists() async {
     _setLoading(true);
     try {
-      // Load both active and archived lists to filter in UI or load separately if needed
-      // For simplicity, we load all and UI filters by status
       final activeLists = await _repository.getMyLists(archived: false);
       final archivedLists = await _repository.getMyLists(archived: true);
       _lists = [...activeLists, ...archivedLists];
@@ -57,10 +57,12 @@ class CallsProvider extends ChangeNotifier {
 
   Future<void> importFromExcel(File file, String userId) async {
     _setLoading(true);
+    _lastImportSummary = null;
     try {
       final importedItems = await _repository.importFromExcel(file);
       if (importedItems.isNotEmpty) {
-        final listName = 'Excel: ${file.path.split('/').last.split('.').first}';
+        final fileName = file.path.split(Platform.pathSeparator).last.split('.').first;
+        final listName = 'Excel: $fileName';
         final newList = await _repository.createList(listName, userId);
 
         final itemsToInsert = importedItems.map((e) => {
@@ -68,7 +70,13 @@ class CallsProvider extends ChangeNotifier {
           'phone': e['phone'] ?? '',
         }).toList();
 
-        await _repository.addItemsToList(newList.id, itemsToInsert);
+        final result = await _repository.addItemsToList(newList.id, itemsToInsert);
+        _lastImportSummary = {
+          'added': result['added'],
+          'duplicates': result['duplicates'],
+          'total': importedItems.length,
+          'listName': listName,
+        };
         await loadLists();
       }
     } catch (e) {
@@ -80,6 +88,7 @@ class CallsProvider extends ChangeNotifier {
 
   Future<void> importFromImage(File file, String userId) async {
     _setLoading(true);
+    _lastImportSummary = null;
     try {
       final numbers = await _repository.extractNumbersFromImage(file);
       if (numbers.isNotEmpty) {
@@ -91,7 +100,13 @@ class CallsProvider extends ChangeNotifier {
           'phone': phone,
         }).toList();
 
-        await _repository.addItemsToList(newList.id, itemsToInsert);
+        final result = await _repository.addItemsToList(newList.id, itemsToInsert);
+        _lastImportSummary = {
+          'added': result['added'],
+          'duplicates': result['duplicates'],
+          'total': numbers.length,
+          'listName': listName,
+        };
         await loadLists();
       } else {
         _errorMessage = 'No phone numbers found in image';
@@ -105,6 +120,11 @@ class CallsProvider extends ChangeNotifier {
 
   void _setLoading(bool value) {
     _isLoading = value;
+    notifyListeners();
+  }
+
+  void clearSummary() {
+    _lastImportSummary = null;
     notifyListeners();
   }
 

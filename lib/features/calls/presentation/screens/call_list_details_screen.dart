@@ -3,6 +3,9 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:animate_do/animate_do.dart';
+import 'package:excel/excel.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:smart_call_assistant/features/calls/data/calls_repository.dart';
 import 'package:smart_call_assistant/features/calls/data/models/call_list_model.dart';
 import 'package:smart_call_assistant/core/components/app_logo.dart';
@@ -19,11 +22,22 @@ class _CallListDetailsScreenState extends State<CallListDetailsScreen> {
   final CallsRepository _repository = CallsRepository();
   List<CallListItemModel> _items = [];
   bool _isLoading = true;
+  
+  // Search & Filter State
+  String _searchQuery = '';
+  String _selectedFilter = 'all'; // all, pending, called, no_answer, whatsapp
+  final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     _loadItems();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadItems() async {
@@ -40,6 +54,64 @@ class _CallListDetailsScreenState extends State<CallListDetailsScreen> {
         setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
       }
+    }
+  }
+
+  List<CallListItemModel> get _filteredItems {
+    return _items.where((item) {
+      final matchesSearch = (item.name?.toLowerCase() ?? '').contains(_searchQuery.toLowerCase()) || 
+                           item.phone.contains(_searchQuery);
+      final matchesFilter = _selectedFilter == 'all' || item.status == _selectedFilter;
+      return matchesSearch && matchesFilter;
+    }).toList();
+  }
+
+  Future<void> _exportToExcel() async {
+    final itemsToExport = _filteredItems;
+    if (itemsToExport.isEmpty) return;
+
+    setState(() => _isLoading = true);
+    try {
+      var excel = Excel.createExcel();
+      Sheet sheetObject = excel['Call Report'];
+      excel.delete('Sheet1');
+
+      sheetObject.appendRow([
+        TextCellValue('Index'),
+        TextCellValue('Name'),
+        TextCellValue('Phone'),
+        TextCellValue('Status'),
+        TextCellValue('Notes'),
+        TextCellValue('Date'),
+      ]);
+
+      for (int i = 0; i < itemsToExport.length; i++) {
+        final item = itemsToExport[i];
+        sheetObject.appendRow([
+          IntCellValue(i + 1),
+          TextCellValue(item.name ?? 'Unknown'),
+          TextCellValue(item.phone),
+          TextCellValue(item.status),
+          TextCellValue(item.notes ?? ''),
+          TextCellValue(item.createdAt.toString().substring(0, 16)),
+        ]);
+      }
+
+      final directory = await getTemporaryDirectory();
+      final filePath = '${directory.path}/Call_Report_${DateTime.now().millisecondsSinceEpoch}.xlsx';
+      final fileBytes = excel.save();
+      
+      if (fileBytes != null) {
+        File(filePath)
+          ..createSync(recursive: true)
+          ..writeAsBytesSync(fileBytes);
+
+        await Share.shareXFiles([XFile(filePath)], text: 'SCA Call Report / تقرير المكالمات');
+      }
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Export Error: $e')));
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -79,12 +151,19 @@ class _CallListDetailsScreenState extends State<CallListDetailsScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final filtered = _filteredItems;
     
     return Scaffold(
       appBar: AppBar(
         title: const Text('Contacts / جهات الاتصال'),
         actions: [
           IconButton(
+            tooltip: 'Export to Excel',
+            icon: const Icon(Icons.download_for_offline_rounded, color: Colors.green),
+            onPressed: filtered.isEmpty ? null : _exportToExcel,
+          ),
+          IconButton(
+            tooltip: 'Import from Excel',
             icon: const Icon(Icons.upload_file_rounded),
             onPressed: _importExcel,
           ),
@@ -92,99 +171,139 @@ class _CallListDetailsScreenState extends State<CallListDetailsScreen> {
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : _items.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
+          : Column(
+              children: [
+                // Search Bar
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                  child: TextField(
+                    controller: _searchController,
+                    decoration: InputDecoration(
+                      hintText: 'Search by name or phone...',
+                      prefixIcon: const Icon(Icons.search_rounded),
+                      suffixIcon: _searchQuery.isNotEmpty 
+                        ? IconButton(icon: const Icon(Icons.clear_rounded), onPressed: () {
+                            _searchController.clear();
+                            setState(() => _searchQuery = '');
+                          }) 
+                        : null,
+                      contentPadding: const EdgeInsets.symmetric(vertical: 0),
+                    ),
+                    onChanged: (v) => setState(() => _searchQuery = v),
+                  ),
+                ),
+
+                // Filter Chips
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  child: Row(
                     children: [
-                      const AppLogo(size: 80, showText: false),
-                      const SizedBox(height: 24),
-                      const Text('No contacts yet / لا توجد أسماء', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 16),
-                      ElevatedButton.icon(
-                        icon: const Icon(Icons.upload_file),
-                        label: const Text('Import Excel / استيراد اكسيل'),
-                        onPressed: _importExcel,
-                      ),
+                      _buildFilterChip('All', 'all'),
+                      _buildFilterChip('Pending', 'pending'),
+                      _buildFilterChip('Called', 'called'),
+                      _buildFilterChip('No Answer', 'no_answer'),
+                      _buildFilterChip('WhatsApp', 'whatsapp'),
                     ],
                   ),
-                )
-              : Column(
-                  children: [
-                    // Unified Action Banner
-                    FadeInDown(
-                      child: Container(
-                        width: double.infinity,
-                        margin: const EdgeInsets.all(16),
-                        padding: const EdgeInsets.all(20),
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.primary,
-                          borderRadius: BorderRadius.circular(20),
-                          boxShadow: [BoxShadow(color: theme.colorScheme.primary.withOpacity(0.3), blurRadius: 15, offset: const Offset(0, 8))],
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.flash_on_rounded, color: Colors.amber, size: 28),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Ready to start? / مستعد للبدء؟',
-                                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
-                                  ),
-                                  Text(
-                                    '${_items.length} contacts loaded',
-                                    style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 12),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            ElevatedButton(
-                              onPressed: () async {
-                                await context.push('/calls/${widget.listId}/process');
-                                if (mounted) _loadItems();
-                              },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: theme.colorScheme.secondary,
-                                foregroundColor: Colors.white,
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                              ),
-                              child: const Text('START'),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    Expanded(
-                      child: ListView.builder(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        itemCount: _items.length,
-                        itemBuilder: (context, index) {
-                          final item = _items[index];
-                          return FadeInUp(
-                            duration: const Duration(milliseconds: 400),
-                            delay: Duration(milliseconds: 50 * index),
-                            child: Card(
-                              margin: const EdgeInsets.only(bottom: 12),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                              child: ListTile(
-                                leading: CircleAvatar(
-                                  backgroundColor: theme.colorScheme.primary.withOpacity(0.1),
-                                  child: Text('${index + 1}', style: TextStyle(color: theme.colorScheme.primary, fontWeight: FontWeight.bold)),
-                                ),
-                                title: Text(item.name ?? 'Unknown', style: const TextStyle(fontWeight: FontWeight.bold)),
-                                subtitle: Text(item.phone),
-                                trailing: _getStatusBadge(item.status, theme),
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                  ],
                 ),
+
+                if (_items.isEmpty)
+                  Expanded(
+                    child: Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const AppLogo(size: 80, showText: false),
+                          const SizedBox(height: 24),
+                          const Text('No contacts yet / لا توجد أسماء', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                          const SizedBox(height: 16),
+                          ElevatedButton.icon(
+                            icon: const Icon(Icons.upload_file),
+                            label: const Text('Import Excel / استيراد اكسيل'),
+                            onPressed: _importExcel,
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                else if (filtered.isEmpty)
+                  const Expanded(child: Center(child: Text('No results match your search')))
+                else
+                  Expanded(
+                    child: ListView.builder(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      itemCount: filtered.length,
+                      itemBuilder: (context, index) {
+                        final item = filtered[index];
+                        return FadeInUp(
+                          duration: const Duration(milliseconds: 300),
+                          child: Card(
+                            margin: const EdgeInsets.only(bottom: 12),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                            child: ListTile(
+                              leading: CircleAvatar(
+                                backgroundColor: theme.colorScheme.primary.withOpacity(0.1),
+                                child: Text('${index + 1}', style: TextStyle(color: theme.colorScheme.primary, fontWeight: FontWeight.bold)),
+                              ),
+                              title: Text(item.name ?? 'Unknown', style: const TextStyle(fontWeight: FontWeight.bold)),
+                              subtitle: Text(item.phone),
+                              trailing: _getStatusBadge(item.status, theme),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+
+                // Start Button Banner (Only if list not empty)
+                if (_items.isNotEmpty && _searchQuery.isEmpty && _selectedFilter == 'all')
+                  FadeInUp(
+                    child: Container(
+                      width: double.infinity,
+                      margin: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.primary,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.flash_on_rounded, color: Colors.amber),
+                          const SizedBox(width: 12),
+                          const Expanded(child: Text('Start calling session?', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))),
+                          ElevatedButton(
+                            onPressed: () async {
+                              await context.push('/calls/${widget.listId}/process');
+                              _loadItems();
+                            },
+                            style: ElevatedButton.styleFrom(backgroundColor: theme.colorScheme.secondary, foregroundColor: Colors.white),
+                            child: const Text('START'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+    );
+  }
+
+  Widget _buildFilterChip(String label, String value) {
+    final isSelected = _selectedFilter == value;
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: FilterChip(
+        label: Text(label, style: TextStyle(fontSize: 12, color: isSelected ? Colors.white : theme.colorScheme.primary)),
+        selected: isSelected,
+        onSelected: (s) => setState(() => _selectedFilter = value),
+        selectedColor: theme.colorScheme.primary,
+        checkmarkColor: Colors.white,
+        backgroundColor: theme.colorScheme.primary.withOpacity(0.05),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        side: BorderSide(color: isSelected ? Colors.transparent : theme.colorScheme.primary.withOpacity(0.1)),
+      ),
     );
   }
 

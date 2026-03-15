@@ -1,6 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/config/supabase_config.dart';
-import '../../../shared/services/models.dart';
 import 'package:spreadsheet_decoder/spreadsheet_decoder.dart';
 import 'dart:io';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
@@ -12,12 +11,24 @@ class CallsRepository {
   Future<List<CallListModel>> getMyLists({bool archived = false}) async {
     try {
       final status = archived ? 'archived' : 'active';
+      // Fetch lists with their item counts and completion status
       final response = await _supabase
           .from('call_lists')
-          .select()
+          .select('*, call_list_items(status)')
           .eq('status', status)
           .order('created_at', ascending: false);
-      return (response as List).map((e) => CallListModel.fromJson(e)).toList();
+      
+      return (response as List).map((e) {
+        final items = e['call_list_items'] as List;
+        final total = items.length;
+        final completed = items.where((i) => i['status'] != 'pending').length;
+        final progress = total == 0 ? 0.0 : completed / total;
+        
+        var map = Map<String, dynamic>.from(e);
+        map['progress'] = progress;
+        map['total_items'] = total;
+        return CallListModel.fromJson(map);
+      }).toList();
     } catch (e) {
       throw Exception('Failed to fetch call lists: $e');
     }
@@ -32,7 +43,6 @@ class CallsRepository {
     return CallListModel.fromJson(response);
   }
 
-  // ✅ New Archive Method
   Future<void> toggleArchive(String listId, bool shouldArchive) async {
     await _supabase
         .from('call_lists')
@@ -50,18 +60,51 @@ class CallsRepository {
     return (response as List).map((e) => CallListItemModel.fromJson(e)).toList();
   }
 
-  Future<void> addItemsToList(String listId, List<Map<String, String>> items) async {
-    if (items.isEmpty) return;
-    final data = items.map((item) => {
-      'list_id': listId,
-      'name': item['name'] ?? 'Unknown',
-      'phone': _normalizePhoneNumber(item['phone'] ?? ''),
-      'status': 'pending',
-    }).where((element) => element['phone']!.isNotEmpty).toList();
-    if (data.isNotEmpty) await _supabase.from('call_list_items').insert(data);
+  Future<Map<String, dynamic>> addItemsToList(String listId, List<Map<String, String>> items) async {
+    if (items.isEmpty) return {'added': 0, 'duplicates': 0};
+    
+    // 1. Get existing numbers in other lists for this user to check for global duplicates
+    final userResponse = await _supabase.from('call_lists').select('user_id').eq('id', listId).single();
+    final userId = userResponse['user_id'];
+    
+    final existingItems = await _supabase
+        .from('call_list_items')
+        .select('phone')
+        .filter('list_id', 'in', 
+          _supabase.from('call_lists').select('id').eq('user_id', userId)
+        );
+    
+    final Set<String> globalPhones = (existingItems as List).map((e) => e['phone'] as String).toSet();
+    
+    List<Map<String, dynamic>> toInsert = [];
+    int duplicateCount = 0;
+    Set<String> localPhones = {}; // To avoid duplicates within the same import file
+
+    for (var item in items) {
+      String phone = _normalizePhoneNumber(item['phone'] ?? '');
+      if (phone.isEmpty) continue;
+
+      if (globalPhones.contains(phone) || localPhones.contains(phone)) {
+        duplicateCount++;
+        continue;
+      }
+
+      localPhones.add(phone);
+      toInsert.add({
+        'list_id': listId,
+        'name': item['name'] ?? 'Unknown',
+        'phone': phone,
+        'status': 'pending',
+      });
+    }
+
+    if (toInsert.isNotEmpty) {
+      await _supabase.from('call_list_items').insert(toInsert);
+    }
+    
+    return {'added': toInsert.length, 'duplicates': duplicateCount};
   }
 
-  // ✅ Updated: Now supports Notes
   Future<void> updateItemStatus(String itemId, String status, {String? notes}) async {
     await _supabase.from('call_list_items').update({
       'status': status,
@@ -79,7 +122,6 @@ class CallsRepository {
     final missingZeroPattern = RegExp(r'(1[0125]\d{8})');
     final matchMissingZero = missingZeroPattern.firstMatch(digits);
     if (matchMissingZero != null) return '0${matchMissingZero.group(0)}';
-    if (digits.length == 11 && digits.startsWith('01')) return digits;
     return '';
   }
 
@@ -94,15 +136,14 @@ class CallsRepository {
         for (var row in sheet.rows) {
           String phone = '';
           String name = 'Unknown';
-          final noiseWords = RegExp(r'(عنوان|شارع|محافظة|ملاحظات|Date|Address|Status|Note|Street)', caseSensitive: false);
           for (var cell in row) {
             if (cell == null) continue;
             String val = cell.toString().trim();
             String norm = _normalizePhoneNumber(val);
             if (norm.isNotEmpty) {
               phone = norm;
-            } else if (val.length > 2 && val.length < 30 && int.tryParse(val) == null && !noiseWords.hasMatch(val)) {
-              if (name == 'Unknown' || val.split(' ').length < name.split(' ').length) name = val;
+            } else if (val.length > 2 && val.length < 30 && int.tryParse(val) == null) {
+              name = val;
             }
           }
           if (phone.isNotEmpty) entries.add({'phone': phone, 'name': name});
@@ -112,33 +153,7 @@ class CallsRepository {
     } catch (e) { throw Exception('Excel Import Error: $e'); }
   }
 
-  Future<List<String>> extractNumbersFromImage(File imageFile) async {
-    final textRecognizer = TextRecognizer();
-    try {
-      final RecognizedText recognizedText = await textRecognizer.processImage(InputImage.fromFile(imageFile));
-      final Set<String> numbers = {};
-      for (var block in recognizedText.blocks) {
-        for (var line in block.lines) {
-          String cleanLine = line.text.replaceAll(RegExp(r'\D'), '');
-          String norm = _normalizePhoneNumber(cleanLine);
-          if (norm.isNotEmpty) numbers.add(norm);
-        }
-      }
-      return numbers.toList();
-    } finally {
-      textRecognizer.close();
-    }
-  }
-
   Future<void> deleteCallList(String listId) async {
     await _supabase.from('call_lists').delete().eq('id', listId);
-  }
-
-  Future<int> getTotalCallsToday() async {
-    try {
-      final today = DateTime.now().toIso8601String().substring(0, 10);
-      final response = await _supabase.from('call_list_items').select('id').not('status', 'eq', 'pending').gte('updated_at', today);
-      return (response as List).length;
-    } catch (e) { return 0; }
   }
 }

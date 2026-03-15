@@ -8,7 +8,6 @@ import 'package:image_picker/image_picker.dart';
 import 'package:smart_call_assistant/features/auth/presentation/auth_provider.dart';
 import 'package:smart_call_assistant/features/calls/presentation/calls_provider.dart';
 import 'package:smart_call_assistant/core/constants/app_constants.dart';
-import '../../../../core/utils/app_notifications.dart';
 
 class CallListsScreen extends StatefulWidget {
   const CallListsScreen({super.key});
@@ -67,7 +66,7 @@ class _CallListsScreenState extends State<CallListsScreen> with SingleTickerProv
   }
 
   Widget _buildList(CallsProvider provider, {required bool isArchived}) {
-    final theme = Theme.of(context); // ✅ Fix: Added theme definition here
+    final theme = Theme.of(context);
     final filteredLists = provider.lists.where((l) => isArchived ? l.status == 'archived' : l.status == 'active').toList();
 
     if (provider.isLoading) return const Center(child: CircularProgressIndicator());
@@ -76,9 +75,9 @@ class _CallListsScreenState extends State<CallListsScreen> with SingleTickerProv
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(isArchived ? Icons.inventory_2_outlined : Icons.contact_phone_outlined, size: 64, color: Colors.grey),
+            Icon(isArchived ? Icons.inventory_2_outlined : Icons.contact_phone_outlined, size: 64, color: Colors.grey.withOpacity(0.5)),
             const SizedBox(height: 16),
-            Text(isArchived ? 'No archived lists' : 'No active lists'),
+            Text(isArchived ? 'No archived lists' : 'No active lists', style: const TextStyle(color: Colors.grey)),
           ],
         ),
       );
@@ -89,6 +88,8 @@ class _CallListsScreenState extends State<CallListsScreen> with SingleTickerProv
       itemCount: filteredLists.length,
       itemBuilder: (context, index) {
         final list = filteredLists[index];
+        final bool isCompleted = list.progress >= 1.0;
+
         return Dismissible(
           key: Key(list.id),
           secondaryBackground: Container(
@@ -113,13 +114,69 @@ class _CallListsScreenState extends State<CallListsScreen> with SingleTickerProv
           },
           child: Card(
             margin: const EdgeInsets.only(bottom: 12),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            child: ListTile(
-              leading: CircleAvatar(backgroundColor: theme.colorScheme.primary.withOpacity(0.1), child: Icon(Icons.list_alt_rounded, color: theme.colorScheme.primary)),
-              title: Text(list.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-              subtitle: Text('${list.createdAt.toString().substring(0, 10)} • ${list.status}'),
-              trailing: const Icon(Icons.chevron_right_rounded),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            child: InkWell(
               onTap: () => context.push('${AppConstants.routeHome}/${list.id}'),
+              borderRadius: BorderRadius.circular(20),
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  children: [
+                    Row(
+                      children: [
+                        CircleAvatar(
+                          backgroundColor: (isCompleted ? Colors.green : theme.colorScheme.primary).withOpacity(0.1),
+                          child: Icon(
+                            isCompleted ? Icons.check_circle_rounded : Icons.list_alt_rounded, 
+                            color: isCompleted ? Colors.green : theme.colorScheme.primary
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(list.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                              Text(
+                                '${list.totalItems} contacts • ${list.createdAt.toString().substring(0, 10)}',
+                                style: TextStyle(fontSize: 12, color: theme.hintColor),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const Icon(Icons.chevron_right_rounded, color: Colors.grey),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(10),
+                            child: LinearProgressIndicator(
+                              value: list.progress,
+                              minHeight: 8,
+                              backgroundColor: theme.colorScheme.primary.withOpacity(0.05),
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                isCompleted ? Colors.green : theme.colorScheme.secondary
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Text(
+                          '${(list.progress * 100).toInt()}%',
+                          style: TextStyle(
+                            fontSize: 12, 
+                            fontWeight: FontWeight.bold, 
+                            color: isCompleted ? Colors.green : theme.colorScheme.secondary
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
         );
@@ -160,10 +217,16 @@ class _CallListsScreenState extends State<CallListsScreen> with SingleTickerProv
     if (mode == 'image') {
       final picker = ImagePicker();
       final img = await picker.pickImage(source: ImageSource.gallery);
-      if (img != null) await callsProvider.importFromImage(File(img.path), userId);
+      if (img != null) {
+        // Updated call to repository through provider might need adjustment if logic changed
+        await callsProvider.importFromImage(File(img.path), userId);
+      }
     } else {
       FilePickerResult? res = await FilePicker.platform.pickFiles(type: FileType.custom, allowedExtensions: ['xlsx', 'xls']);
-      if (res != null) await callsProvider.importFromExcel(File(res.files.single.path!), userId);
+      if (res != null) {
+        // We'll update the logic to show the summary dialog after import
+        await callsProvider.importFromExcel(File(res.files.single.path!), userId);
+      }
     }
   }
 }

@@ -4,6 +4,8 @@ class CallListModel {
   final String name;
   final String status;
   final DateTime createdAt;
+  final double progress; // Added
+  final int totalItems; // Added
 
   CallListModel({
     required this.id,
@@ -11,6 +13,8 @@ class CallListModel {
     required this.name,
     required this.status,
     required this.createdAt,
+    this.progress = 0.0,
+    this.totalItems = 0,
   });
 
   factory CallListModel.fromJson(Map<String, dynamic> json) {
@@ -20,6 +24,8 @@ class CallListModel {
       name: json['name'] as String,
       status: (json['status'] as String?) ?? 'active',
       createdAt: DateTime.parse(json['created_at'] as String),
+      progress: (json['progress'] as num?)?.toDouble() ?? 0.0,
+      totalItems: json['total_items'] as int? ?? 0,
     );
   }
 }

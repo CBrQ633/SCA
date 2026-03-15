@@ -54,18 +54,18 @@ dependencies:
   package_info_plus: ^8.2.1
   excel: ^4.0.6
   
-  # Firebase & Notifications (Compatible Set)
-  firebase_core: ^3.4.0
-  firebase_messaging: ^15.1.1
-  flutter_local_notifications: 17.2.2
+  # Firebase & Notifications (Updated Set)
+  firebase_core: ^3.10.1
+  firebase_messaging: ^15.2.1
+  flutter_local_notifications: ^18.0.1
 
   share_plus: ^10.1.4
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^3.0.2
-  flutter_launcher_icons: ^0.13.1
+  flutter_lints: ^4.0.0
+  flutter_launcher_icons: ^0.14.3
 
 flutter:
   uses-material-design: true

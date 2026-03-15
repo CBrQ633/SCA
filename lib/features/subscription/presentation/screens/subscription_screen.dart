@@ -47,6 +47,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
       if (mounted) {
         AppNotifications.showSuccess(context, 'Request submitted! / تم إرسال الطلب');
         setState(() { _selectedPlan = null; _proofImage = null; });
+        // Refresh profile to update UI status
+        await context.read<AuthProvider>().refreshUser();
       }
     } catch (e) {
       if (mounted) AppNotifications.showError(context, 'Error: $e');
@@ -60,14 +62,14 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     final user = context.watch<AuthProvider>().currentUser;
     final isActive = user?.isSubscriptionActive ?? false;
     final isPending = user?.subscriptionStatus == 'pending';
-    const textNavy = Color(0xFF0F172A);
+    final isRejected = user?.subscriptionStatus == 'rejected';
+    
+    final theme = Theme.of(context);
+    final textNavy = theme.colorScheme.onSurface;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF1F5F9),
       appBar: AppBar(
-        title: const Text('Subscription / الاشتراك', style: TextStyle(color: textNavy, fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.white,
-        elevation: 0,
+        title: const Text('Subscription / الاشتراك', style: TextStyle(fontWeight: FontWeight.bold)),
         centerTitle: true,
       ),
       body: SingleChildScrollView(
@@ -75,42 +77,16 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Current Status Card
-            Container(
-              padding: const EdgeInsets.all(20),
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: isActive ? const Color(0xFFD1FAE5) : (isPending ? const Color(0xFFFEF3C7) : const Color(0xFFFEE2E2)),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: isActive ? const Color(0xFF10B981) : (isPending ? Colors.amber : Colors.redAccent)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(isActive ? Icons.verified : (isPending ? Icons.timer : Icons.error_outline), color: isActive ? Colors.green : (isPending ? Colors.orange : Colors.red)),
-                      const SizedBox(width: 12),
-                      Text(
-                        isActive ? 'Account Active / الحساب نشط' : (isPending ? 'Pending Review / قيد المراجعة' : 'Inactive / غير نشط'),
-                        style: const TextStyle(fontWeight: FontWeight.bold, color: textNavy),
-                      ),
-                    ],
-                  ),
-                  if (isActive && user?.subscriptionEnd != null) ...[
-                    const SizedBox(height: 8),
-                    Text('Expires: ${DateFormat('yyyy-MM-dd').format(user!.subscriptionEnd!)}', style: const TextStyle(fontSize: 13, color: Colors.blueGrey)),
-                  ]
-                ],
-              ),
-            ),
+            // Status Card
+            _buildStatusCard(user, isActive, isPending, isRejected),
             
             const SizedBox(height: 32),
-            Text(isActive ? 'Upgrade Plan / ترقية الاشتراك' : 'Choose a Plan / اختر الباقة', style: const TextStyle(fontWeight: FontWeight.bold, color: textNavy, fontSize: 15)),
-            const SizedBox(height: 16),
 
             if (!isPending) ...[
-              // If NOT active, show both. If active, ONLY show Quarterly (Upgrade).
+              Text(isActive ? 'Upgrade Plan / ترقية الاشتراك' : 'Choose a Plan / اختر الباقة', 
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+              const SizedBox(height: 16),
+
               if (!isActive) _buildPlanTile('Monthly / شهر', '100 EGP', 'monthly'),
               if (!isActive) const SizedBox(height: 12),
               _buildPlanTile('3 Months / ٣ شهور', '250 EGP', 'quarterly', isUpgrade: isActive),
@@ -118,17 +94,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
               const SizedBox(height: 24),
               
               // Payment Methods
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
-                child: Column(
-                  children: [
-                    _buildPaymentRow('Vodafone Cash', vodafoneCash, Colors.red),
-                    const Divider(),
-                    _buildPaymentRow('InstaPay', instapay, Colors.green),
-                  ],
-                ),
-              ),
+              _buildPaymentInfoCard(),
+
               const SizedBox(height: 24),
               
               // Upload Area
@@ -137,10 +104,18 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                 child: Container(
                   height: 140,
                   width: double.infinity,
-                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), border: Border.all(color: Colors.grey.shade300, width: 2)),
+                  decoration: BoxDecoration(
+                    color: theme.cardTheme.color,
+                    borderRadius: BorderRadius.circular(20), 
+                    border: Border.all(color: _proofImage != null ? theme.colorScheme.secondary : Colors.grey.withOpacity(0.3), width: 2)
+                  ),
                   child: _proofImage != null 
                     ? ClipRRect(borderRadius: BorderRadius.circular(18), child: Image.file(_proofImage!, fit: BoxFit.cover))
-                    : const Column(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.upload_file, size: 32, color: textNavy), Text('Upload Receipt / ارفع الإيصال', style: TextStyle(color: textNavy, fontWeight: FontWeight.bold))]),
+                    : Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                        Icon(Icons.upload_file, size: 32, color: theme.colorScheme.primary),
+                        const SizedBox(height: 8),
+                        const Text('Upload Receipt / ارفع الإيصال', style: TextStyle(fontWeight: FontWeight.bold))
+                      ]),
                 ),
               ),
               const SizedBox(height: 32),
@@ -149,7 +124,6 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                 width: double.infinity, height: 56,
                 child: ElevatedButton(
                   onPressed: _isLoading || _selectedPlan == null || _proofImage == null ? null : () => _submitRequest(user!),
-                  style: ElevatedButton.styleFrom(backgroundColor: textNavy, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
                   child: _isLoading ? const CircularProgressIndicator(color: Colors.white) : const Text('SUBMIT REQUEST / إرسال الطلب'),
                 ),
               ),
@@ -157,7 +131,13 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
               const Center(
                 child: Padding(
                   padding: EdgeInsets.symmetric(vertical: 40),
-                  child: Text('Your request is being reviewed...\nجاري مراجعة طلبك...', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.bold)),
+                  child: Column(
+                    children: [
+                      CircularProgressIndicator(),
+                      SizedBox(height: 16),
+                      Text('Your request is being reviewed...\nجاري مراجعة طلبك...', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.bold)),
+                    ],
+                  ),
                 ),
               )
             ],
@@ -167,28 +147,106 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     );
   }
 
+  Widget _buildStatusCard(UserModel? user, bool isActive, bool isPending, bool isRejected) {
+    Color cardColor = Colors.red.withOpacity(0.1);
+    Color borderColor = Colors.redAccent;
+    IconData icon = Icons.error_outline;
+    String statusText = 'Inactive / غير نشط';
+
+    if (isActive) {
+      cardColor = Colors.green.withOpacity(0.1);
+      borderColor = Colors.green;
+      icon = Icons.verified;
+      statusText = 'Account Active / الحساب نشط';
+    } else if (isPending) {
+      cardColor = Colors.amber.withOpacity(0.1);
+      borderColor = Colors.amber;
+      icon = Icons.timer;
+      statusText = 'Pending Review / قيد المراجعة';
+    } else if (isRejected) {
+      cardColor = Colors.red.withOpacity(0.1);
+      borderColor = Colors.red;
+      icon = Icons.cancel;
+      statusText = 'Request Rejected / تم رفض الطلب';
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: borderColor),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, color: borderColor),
+              const SizedBox(width: 12),
+              Text(statusText, style: const TextStyle(fontWeight: FontWeight.bold)),
+            ],
+          ),
+          if (isRejected && user?.subscriptionRejectReason != null) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(color: Colors.white.withOpacity(0.5), borderRadius: BorderRadius.circular(10)),
+              child: Text('Reason / السبب: ${user!.subscriptionRejectReason}', style: const TextStyle(fontSize: 13, color: Colors.red, fontWeight: FontWeight.bold)),
+            ),
+          ],
+          if (isActive && user?.subscriptionEnd != null) ...[
+            const SizedBox(height: 8),
+            Text('Expires: ${DateFormat('yyyy-MM-dd').format(user!.subscriptionEnd!)}', style: const TextStyle(fontSize: 13, color: Colors.blueGrey)),
+          ]
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPaymentInfoCard() {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(color: theme.cardTheme.color, borderRadius: BorderRadius.circular(20), border: Border.all(color: Colors.grey.withOpacity(0.1))),
+      child: Column(
+        children: [
+          _buildPaymentRow('Vodafone Cash', vodafoneCash, Colors.red),
+          const Divider(),
+          _buildPaymentRow('InstaPay', instapay, Colors.green),
+        ],
+      ),
+    );
+  }
+
   Widget _buildPaymentRow(String label, String value, Color color) {
     return ListTile(
       leading: Icon(Icons.payment, color: color, size: 20),
       title: Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
-      trailing: SelectableText(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF0F172A))),
+      trailing: SelectableText(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
     );
   }
 
   Widget _buildPlanTile(String title, String price, String value, {bool isUpgrade = false}) {
     final isSelected = _selectedPlan == value;
+    final theme = Theme.of(context);
     return InkWell(
       onTap: () => setState(() => _selectedPlan = value),
       child: Container(
         padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: isSelected ? const Color(0xFF10B981) : Colors.transparent, width: 2)),
+        decoration: BoxDecoration(
+          color: theme.cardTheme.color, 
+          borderRadius: BorderRadius.circular(16), 
+          border: Border.all(color: isSelected ? theme.colorScheme.secondary : Colors.grey.withOpacity(0.1), width: 2)
+        ),
         child: Row(
           children: [
-            Icon(isSelected ? Icons.check_circle : Icons.circle_outlined, color: isSelected ? const Color(0xFF10B981) : Colors.grey),
+            Icon(isSelected ? Icons.check_circle : Icons.circle_outlined, color: isSelected ? theme.colorScheme.secondary : Colors.grey),
             const SizedBox(width: 16),
             Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(isUpgrade ? 'UPGRADE: $title' : title, style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
-              Text(price, style: const TextStyle(color: Color(0xFF10B981), fontWeight: FontWeight.bold)),
+              Text(isUpgrade ? 'UPGRADE: $title' : title, style: const TextStyle(fontWeight: FontWeight.bold)),
+              Text(price, style: TextStyle(color: theme.colorScheme.secondary, fontWeight: FontWeight.bold)),
             ]),
           ],
         ),

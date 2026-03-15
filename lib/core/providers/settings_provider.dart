@@ -2,11 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class SettingsProvider with ChangeNotifier {
-  ThemeMode _themeMode = ThemeMode.system;
+  ThemeMode _themeMode = ThemeMode.light; // Changed default to light
   Locale _locale = const Locale('en');
 
   ThemeMode get themeMode => _themeMode;
   Locale get locale => _locale;
+  bool get isDarkMode => _themeMode == ThemeMode.dark;
 
   SettingsProvider() {
     _loadSettings();
@@ -21,6 +22,9 @@ class SettingsProvider with ChangeNotifier {
         themeIndex >= 0 &&
         themeIndex < ThemeMode.values.length) {
       _themeMode = ThemeMode.values[themeIndex];
+    } else {
+      // If no theme is saved, default to light as per user request (not automatic)
+      _themeMode = ThemeMode.light;
     }
 
     // Load Locale
@@ -37,6 +41,11 @@ class SettingsProvider with ChangeNotifier {
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt('theme_mode', mode.index);
+  }
+
+  Future<void> toggleTheme() async {
+    final newMode = _themeMode == ThemeMode.dark ? ThemeMode.light : ThemeMode.dark;
+    await setThemeMode(newMode);
   }
 
   Future<void> setLocale(Locale locale) async {
