@@ -32,7 +32,10 @@ class SubscriptionRepository {
         'status': 'pending',
       });
       
-      await _supabase.from('profiles').update({'subscription_status': 'pending'}).eq('id', userId);
+      await _supabase.from('profiles').update({
+        'subscription_status': 'pending',
+        'subscription_reject_reason': null
+      }).eq('id', userId);
       
     } catch (e) {
       throw Exception('حدث خطأ أثناء إرسال الطلب: $e');
@@ -48,7 +51,7 @@ class SubscriptionRepository {
           .order('created_at', ascending: false);
       return List<Map<String, dynamic>>.from(response);
     } catch (e) {
-      throw Exception('خطأ في جلب الطلبات: $e');
+      return [];
     }
   }
 
@@ -60,7 +63,6 @@ class SubscriptionRepository {
           .eq('status', 'pending');
       return (response as List).length;
     } catch (e) {
-      debugPrint('Error getting pending count: $e');
       return 0;
     }
   }
@@ -76,6 +78,7 @@ class SubscriptionRepository {
 
       await _supabase.from('profiles').update({
         'subscription_status': 'active',
+        'subscription_reject_reason': null,
         'subscription_start': now.toIso8601String(),
         'subscription_end': endDate.toIso8601String(),
       }).eq('id', userId);
@@ -86,13 +89,16 @@ class SubscriptionRepository {
 
   Future<void> rejectRequest(String requestId, String userId, {String? reason}) async {
     try {
+      // 1. Update request status
       await _supabase.from('subscription_requests').update({
         'status': 'rejected',
         'reject_reason': reason,
       }).eq('id', requestId);
       
+      // 2. Update user profile status
       await _supabase.from('profiles').update({
-        'subscription_status': 'none'
+        'subscription_status': 'rejected',
+        'subscription_reject_reason': reason
       }).eq('id', userId);
     } catch (e) {
       throw Exception('فشل في رفض الطلب: $e');

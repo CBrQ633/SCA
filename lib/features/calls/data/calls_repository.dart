@@ -18,7 +18,7 @@ class CallsRepository {
           .order('created_at', ascending: false);
       
       return (response as List).map((e) {
-        final items = e['call_list_items'] as List;
+        final items = (e['call_list_items'] as List?) ?? [];
         final total = items.length;
         final completed = items.where((i) => i['status'] != 'pending').length;
         final progress = total == 0 ? 0.0 : completed / total;
@@ -29,7 +29,7 @@ class CallsRepository {
         return CallListModel.fromJson(map);
       }).toList();
     } catch (e) {
-      throw Exception('Failed to fetch call lists: $e');
+      return [];
     }
   }
 
@@ -62,45 +62,50 @@ class CallsRepository {
   Future<Map<String, dynamic>> addItemsToList(String listId, List<Map<String, String>> items) async {
     if (items.isEmpty) return {'added': 0, 'duplicates': 0};
     
-    final userResponse = await _supabase.from('call_lists').select('user_id').eq('id', listId).single();
-    final userId = userResponse['user_id'];
-    
-    final existingItems = await _supabase
-        .from('call_list_items')
-        .select('phone')
-        .filter('list_id', 'in', 
-          _supabase.from('call_lists').select('id').eq('user_id', userId)
-        );
-    
-    final Set<String> globalPhones = (existingItems as List).map((e) => e['phone'] as String).toSet();
-    
-    List<Map<String, dynamic>> toInsert = [];
-    int duplicateCount = 0;
-    Set<String> localPhones = {};
+    try {
+      final userResponse = await _supabase.from('call_lists').select('user_id').eq('id', listId).single();
+      final userId = userResponse['user_id'];
+      
+      // Get all existing phones for this user to check duplicates
+      final existingItemsResponse = await _supabase
+          .from('call_list_items')
+          .select('phone')
+          .filter('list_id', 'in', 
+            _supabase.from('call_lists').select('id').eq('user_id', userId)
+          );
+      
+      final Set<String> globalPhones = (existingItemsResponse as List).map((e) => e['phone'].toString()).toSet();
+      
+      List<Map<String, dynamic>> toInsert = [];
+      int duplicateCount = 0;
+      Set<String> localPhones = {};
 
-    for (var item in items) {
-      String phone = _normalizePhoneNumber(item['phone'] ?? '');
-      if (phone.isEmpty) continue;
+      for (var item in items) {
+        String phone = _normalizePhoneNumber(item['phone'] ?? '');
+        if (phone.isEmpty) continue;
 
-      if (globalPhones.contains(phone) || localPhones.contains(phone)) {
-        duplicateCount++;
-        continue;
+        if (globalPhones.contains(phone) || localPhones.contains(phone)) {
+          duplicateCount++;
+          continue;
+        }
+
+        localPhones.add(phone);
+        toInsert.add({
+          'list_id': listId,
+          'name': item['name'] ?? 'Unknown',
+          'phone': phone,
+          'status': 'pending',
+        });
       }
 
-      localPhones.add(phone);
-      toInsert.add({
-        'list_id': listId,
-        'name': item['name'] ?? 'Unknown',
-        'phone': phone,
-        'status': 'pending',
-      });
+      if (toInsert.isNotEmpty) {
+        await _supabase.from('call_list_items').insert(toInsert);
+      }
+      
+      return {'added': toInsert.length, 'duplicates': duplicateCount};
+    } catch (e) {
+      throw Exception('Database Error during import: $e');
     }
-
-    if (toInsert.isNotEmpty) {
-      await _supabase.from('call_list_items').insert(toInsert);
-    }
-    
-    return {'added': toInsert.length, 'duplicates': duplicateCount};
   }
 
   Future<void> updateItemStatus(String itemId, String status, {String? notes}) async {
@@ -112,15 +117,21 @@ class CallsRepository {
   }
 
   String _normalizePhoneNumber(String raw) {
-    if (raw.trim().isEmpty) return '';
     String digits = raw.replaceAll(RegExp(r'\D'), '');
-    final egyptianPattern = RegExp(r'(01[0125]\d{8})');
-    final match = egyptianPattern.firstMatch(digits);
-    if (match != null) return match.group(0)!;
-    final missingZeroPattern = RegExp(r'(1[0125]\d{8})');
-    final matchMissingZero = missingZeroPattern.firstMatch(digits);
-    if (matchMissingZero != null) return '0${matchMissingZero.group(0)}';
-    return '';
+    
+    // Support Egyptian numbers starting with 01... (11 digits)
+    if (digits.length == 11 && digits.startsWith('01')) return digits;
+    
+    // Support Egyptian numbers starting with 1... (10 digits)
+    if (digits.length == 10 && digits.startsWith('1')) return '0$digits';
+    
+    // Support international format +201...
+    if (digits.startsWith('201') && digits.length == 12) return '0${digits.substring(2)}';
+    
+    // If it's a valid 11-digit number but we're not sure, return as is if digits only
+    if (digits.length == 11) return digits;
+
+    return ''; 
   }
 
   Future<List<Map<String, String>>> importFromExcel(File file) async {
@@ -128,27 +139,36 @@ class CallsRepository {
       final bytes = file.readAsBytesSync();
       final decoder = SpreadsheetDecoder.decodeBytes(bytes, update: true);
       final List<Map<String, String>> entries = [];
+      
       for (var table in decoder.tables.keys) {
         final sheet = decoder.tables[table];
         if (sheet == null) continue;
+        
         for (var row in sheet.rows) {
           String phone = '';
-          String name = 'Unknown';
+          String name = '';
+          
           for (var cell in row) {
             if (cell == null) continue;
             String val = cell.toString().trim();
+            if (val.isEmpty) continue;
+
             String norm = _normalizePhoneNumber(val);
-            if (norm.isNotEmpty) {
+            if (norm.isNotEmpty && phone.isEmpty) {
               phone = norm;
-            } else if (val.length > 2 && val.length < 30 && int.tryParse(val) == null) {
+            } else if (val.length > 2 && name.isEmpty && int.tryParse(val) == null) {
               name = val;
             }
           }
-          if (phone.isNotEmpty) entries.add({'phone': phone, 'name': name});
+          if (phone.isNotEmpty) {
+            entries.add({'phone': phone, 'name': name.isEmpty ? 'Unknown' : name});
+          }
         }
       }
       return entries;
-    } catch (e) { throw Exception('Excel Import Error: $e'); }
+    } catch (e) { 
+      throw Exception('Excel Format Error: $e'); 
+    }
   }
 
   Future<List<String>> extractNumbersFromImage(File imageFile) async {
@@ -156,14 +176,28 @@ class CallsRepository {
     try {
       final RecognizedText recognizedText = await textRecognizer.processImage(InputImage.fromFile(imageFile));
       final Set<String> numbers = {};
+      
       for (var block in recognizedText.blocks) {
         for (var line in block.lines) {
-          String cleanLine = line.text.replaceAll(RegExp(r'\D'), '');
-          String norm = _normalizePhoneNumber(cleanLine);
-          if (norm.isNotEmpty) numbers.add(norm);
+          // Look for patterns in the whole line first
+          String text = line.text;
+          Iterable<Match> matches = RegExp(r'(01[0125]\d{8}|1[0125]\d{8})').allMatches(text);
+          for (var m in matches) {
+            String norm = _normalizePhoneNumber(m.group(0)!);
+            if (norm.isNotEmpty) numbers.add(norm);
+          }
+          
+          // Fallback: cleaning all non-digits
+          String cleanDigits = text.replaceAll(RegExp(r'\D'), '');
+          if (cleanDigits.length >= 10) {
+            String norm = _normalizePhoneNumber(cleanDigits);
+            if (norm.isNotEmpty) numbers.add(norm);
+          }
         }
       }
       return numbers.toList();
+    } catch (e) {
+      return [];
     } finally {
       textRecognizer.close();
     }

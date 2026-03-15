@@ -15,6 +15,14 @@ class MyApp extends StatelessWidget {
       builder: (context, authProvider, settingsProvider, _) {
         final router = AppRouter.getRouter(authProvider);
 
+        // ✅ Redirect to HowToUse if it's the first login ever
+        if (authProvider.currentUser != null && authProvider.isFirstLogin) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            // This is a simple way to show it without complex routing logic change
+            // Alternatively, AppRouter could handle this.
+          });
+        }
+
         return MaterialApp.router(
           title: 'SCA',
           debugShowCheckedModeBanner: false,

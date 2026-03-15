@@ -28,6 +28,12 @@ class AppTheme {
       iconTheme: IconThemeData(color: primaryNavy),
       titleTextStyle: TextStyle(color: primaryNavy, fontWeight: FontWeight.bold, fontSize: 18, fontFamily: 'Cairo'),
     ),
+    bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+      backgroundColor: Colors.white,
+      selectedItemColor: accentEmerald,
+      unselectedItemColor: Colors.grey,
+      elevation: 8,
+    ),
     cardTheme: CardThemeData(
       color: Colors.white,
       elevation: 0,
@@ -83,6 +89,12 @@ class AppTheme {
       centerTitle: true,
       iconTheme: IconThemeData(color: Colors.white),
       titleTextStyle: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18, fontFamily: 'Cairo'),
+    ),
+    bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+      backgroundColor: surfaceDark,
+      selectedItemColor: accentEmerald,
+      unselectedItemColor: Colors.white54,
+      elevation: 8,
     ),
     cardTheme: CardThemeData(
       color: surfaceDark,
