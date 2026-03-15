@@ -88,7 +88,7 @@ class HowToUseScreen extends StatelessWidget {
         theme,
         isArabic ? 'قوالب واتساب الجاهزة' : 'WhatsApp Templates',
         isArabic ? 'اضغط أيقونة الإعدادات الخضراء في شاشة الاتصال لحفظ رسالة جاهزة. استخدم {name} ليتم وضع اسم العميل تلقائياً في الرسالة.' : 'Tap the green settings icon during calls to save a message template. Use {name} to auto-insert the contact name in your message.',
-        Icons.whatsapp_rounded,
+        Icons.chat_bubble_outline_rounded,
       ),
       _buildStepCard(
         theme,

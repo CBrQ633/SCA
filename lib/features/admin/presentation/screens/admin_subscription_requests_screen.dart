@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:smart_call_assistant/features/subscription/data/subscription_repository.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:intl/intl.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 class AdminSubscriptionRequestsScreen extends StatefulWidget {
   const AdminSubscriptionRequestsScreen({super.key});
@@ -67,7 +67,6 @@ class _AdminSubscriptionRequestsScreenState extends State<AdminSubscriptionReque
   }
 
   Future<String?> _showRejectReasonDialog() async {
-    String? selectedReason;
     final reasons = [
       'Image not clear / الصورة غير واضحة',
       'Amount incorrect / المبلغ غير صحيح',
@@ -101,7 +100,7 @@ class _AdminSubscriptionRequestsScreenState extends State<AdminSubscriptionReque
             InteractiveViewer(
               minScale: 0.5,
               maxScale: 4.0,
-              child: Center(child: Image.network(url, fit: foundation.kIsWeb ? BoxFit.contain : null)),
+              child: Center(child: Image.network(url, fit: kIsWeb ? BoxFit.contain : null)),
             ),
             PositionBag(
               top: 40, right: 20,
@@ -233,7 +232,6 @@ class _AdminSubscriptionRequestsScreenState extends State<AdminSubscriptionReque
   }
 }
 
-// Fixed minor helper for the dialog stack
 class PositionBag extends StatelessWidget {
   final double? top, right, bottom, left;
   final Widget child;

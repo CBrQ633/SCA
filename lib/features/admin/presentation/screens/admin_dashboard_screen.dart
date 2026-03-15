@@ -20,7 +20,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
   int _totalUsers = 0;
   int _callsToday = 0;
-  int _pendingSubs = 0;
   bool _isLoading = true;
 
   @override
@@ -33,7 +32,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     if (!mounted) return;
     setState(() => _isLoading = true);
     try {
-      final results = await Future.wait([
+      final results = await Future.wait<dynamic>([
         _authRepo.getUsersCount(),
         _callsRepo.getTotalCallsToday(),
         _subRepo.getPendingCount(),
@@ -43,7 +42,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         setState(() {
           _totalUsers = results[0] as int;
           _callsToday = results[1] as int;
-          _pendingSubs = results[2] as int;
           _isLoading = false;
         });
       }

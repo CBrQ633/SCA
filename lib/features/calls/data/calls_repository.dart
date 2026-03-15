@@ -11,7 +11,6 @@ class CallsRepository {
   Future<List<CallListModel>> getMyLists({bool archived = false}) async {
     try {
       final status = archived ? 'archived' : 'active';
-      // Fetch lists with their item counts and completion status
       final response = await _supabase
           .from('call_lists')
           .select('*, call_list_items(status)')
@@ -63,7 +62,6 @@ class CallsRepository {
   Future<Map<String, dynamic>> addItemsToList(String listId, List<Map<String, String>> items) async {
     if (items.isEmpty) return {'added': 0, 'duplicates': 0};
     
-    // 1. Get existing numbers in other lists for this user to check for global duplicates
     final userResponse = await _supabase.from('call_lists').select('user_id').eq('id', listId).single();
     final userId = userResponse['user_id'];
     
@@ -78,7 +76,7 @@ class CallsRepository {
     
     List<Map<String, dynamic>> toInsert = [];
     int duplicateCount = 0;
-    Set<String> localPhones = {}; // To avoid duplicates within the same import file
+    Set<String> localPhones = {};
 
     for (var item in items) {
       String phone = _normalizePhoneNumber(item['phone'] ?? '');
@@ -153,7 +151,33 @@ class CallsRepository {
     } catch (e) { throw Exception('Excel Import Error: $e'); }
   }
 
+  Future<List<String>> extractNumbersFromImage(File imageFile) async {
+    final textRecognizer = TextRecognizer();
+    try {
+      final RecognizedText recognizedText = await textRecognizer.processImage(InputImage.fromFile(imageFile));
+      final Set<String> numbers = {};
+      for (var block in recognizedText.blocks) {
+        for (var line in block.lines) {
+          String cleanLine = line.text.replaceAll(RegExp(r'\D'), '');
+          String norm = _normalizePhoneNumber(cleanLine);
+          if (norm.isNotEmpty) numbers.add(norm);
+        }
+      }
+      return numbers.toList();
+    } finally {
+      textRecognizer.close();
+    }
+  }
+
   Future<void> deleteCallList(String listId) async {
     await _supabase.from('call_lists').delete().eq('id', listId);
+  }
+
+  Future<int> getTotalCallsToday() async {
+    try {
+      final today = DateTime.now().toIso8601String().substring(0, 10);
+      final response = await _supabase.from('call_list_items').select('id').not('status', 'eq', 'pending').gte('updated_at', today);
+      return (response as List).length;
+    } catch (e) { return 0; }
   }
 }

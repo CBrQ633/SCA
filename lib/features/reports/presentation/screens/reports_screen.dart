@@ -44,7 +44,6 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
   double get _successRate {
     if (_callStats == null || _callStats!.totalCalls == 0) return 0.0;
-    // Success rate based on Answered / (Answered + No Answer)
     int totalAttempted = _callStats!.answered + _callStats!.noAnswer;
     if (totalAttempted == 0) return 0.0;
     return (_callStats!.answered / totalAttempted);
@@ -240,7 +239,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
         color: theme.cardTheme.color, 
         borderRadius: BorderRadius.circular(24),
         border: theme.cardTheme.shape is RoundedRectangleBorder 
-          ? (theme.cardTheme.shape as RoundedRectangleBorder).side 
+          ? Border.fromBorderSide((theme.cardTheme.shape as RoundedRectangleBorder).side)
           : null,
         boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4))],
       ),
