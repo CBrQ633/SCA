@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:smart_call_assistant/features/auth/presentation/auth_provider.dart';
 import 'package:smart_call_assistant/features/auth/presentation/screens/login_screen.dart';
 import 'package:smart_call_assistant/features/auth/presentation/screens/register_screen.dart';
+import 'package:smart_call_assistant/features/auth/presentation/screens/email_confirmation_success_screen.dart';
 import 'package:smart_call_assistant/features/calls/presentation/screens/call_lists_screen.dart';
 import 'package:smart_call_assistant/features/calls/presentation/screens/call_list_details_screen.dart';
 import 'package:smart_call_assistant/features/calls/presentation/screens/call_process_screen.dart';
@@ -28,6 +29,9 @@ class AppRouter {
       initialLocation: AppConstants.routeLogin,
       refreshListenable: authProvider,
       redirect: (context, state) {
+        // Allow public routes
+        if (state.matchedLocation == '/confirm-email') return null;
+
         final isAuthenticated = authProvider.isAuthenticated;
         final isAuthRoute = state.matchedLocation == AppConstants.routeLogin ||
             state.matchedLocation == AppConstants.routeRegister;
@@ -51,6 +55,7 @@ class AppRouter {
       routes: [
         GoRoute(path: AppConstants.routeLogin, builder: (context, state) => const LoginScreen()),
         GoRoute(path: AppConstants.routeRegister, builder: (context, state) => const RegisterScreen()),
+        GoRoute(path: '/confirm-email', builder: (context, state) => const EmailConfirmationSuccessScreen()),
         
         StatefulShellRoute.indexedStack(
           builder: (context, state, navigationShell) {

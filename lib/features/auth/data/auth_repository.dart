@@ -10,7 +10,7 @@ class AuthRepository {
 
   User? get currentUser => _supabase.auth.currentUser;
 
-  Future<UserModel?> getCurrentUserProfile() async {
+  Future<UserModel?> getCurrentUser() async {
     final user = currentUser;
     if (user == null) return null;
     try {
@@ -23,13 +23,13 @@ class AuthRepository {
     }
   }
 
-  Future<UserModel> login({required String email, required String password}) async {
+  Future<UserModel?> login({required String email, required String password}) async {
     try {
       final authResponse = await _supabase.auth.signInWithPassword(email: email, password: password);
-      if (authResponse.user == null) throw Exception('Login failed');
+      if (authResponse.user == null) throw Exception('Login failed / فشل تسجيل الدخول');
 
-      final profile = await getCurrentUserProfile();
-      if (profile == null) throw Exception('Profile not found');
+      final profile = await getCurrentUser();
+      if (profile == null) throw Exception('Profile not found / لم يتم العثور على الملف الشخصي');
 
       _updateFcmTokenInBackground(authResponse.user!.id);
       return profile;
@@ -47,23 +47,16 @@ class AuthRepository {
     }
   }
 
-  Future<UserModel> register({required String email, required String password, required String fullName}) async {
+  Future<void> register({required String email, required String password, required String fullName}) async {
     try {
+      // ✅ Added redirectTo to match our Deep Link sca://confirm-email
       final authResponse = await _supabase.auth.signUp(
         email: email,
         password: password,
-        data: {'full_name': fullName}
+        data: {'full_name': fullName},
+        emailRedirectTo: 'sca://confirm-email', 
       );
-      if (authResponse.user == null) throw Exception('Registration failed');
-
-      return UserModel(
-        id: authResponse.user!.id,
-        email: email,
-        fullName: fullName,
-        role: 'sales_user',
-        subscriptionStatus: 'active',
-        createdAt: DateTime.now(),
-      );
+      if (authResponse.user == null) throw Exception('Registration failed / فشل التسجيل');
     } catch (e) {
       throw Exception('Registration error: $e');
     }
@@ -108,8 +101,6 @@ class AuthRepository {
 
   Future<void> deleteUser(String userId) async {
     try {
-      // Deleting from profiles will cascade if configured,
-      // but ideally you delete from auth.users via a service role or edge function.
       await _supabase.from('profiles').delete().eq('id', userId);
     } catch (e) {
       throw Exception('Failed to delete user: $e');
