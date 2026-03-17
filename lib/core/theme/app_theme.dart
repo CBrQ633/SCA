@@ -28,11 +28,21 @@ class AppTheme {
       iconTheme: IconThemeData(color: primaryNavy),
       titleTextStyle: TextStyle(color: primaryNavy, fontWeight: FontWeight.bold, fontSize: 18, fontFamily: 'Cairo'),
     ),
-    bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+    navigationBarTheme: NavigationBarThemeData(
       backgroundColor: Colors.white,
-      selectedItemColor: accentEmerald,
-      unselectedItemColor: Colors.grey,
-      elevation: 8,
+      indicatorColor: accentEmerald.withOpacity(0.2),
+      iconTheme: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.selected)) {
+          return const IconThemeData(color: accentEmerald);
+        }
+        return const IconThemeData(color: Colors.grey);
+      }),
+      labelTextStyle: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.selected)) {
+          return const TextStyle(color: accentEmerald, fontWeight: FontWeight.bold, fontSize: 12);
+        }
+        return const TextStyle(color: Colors.grey, fontSize: 12);
+      }),
     ),
     cardTheme: CardThemeData(
       color: Colors.white,
@@ -90,11 +100,21 @@ class AppTheme {
       iconTheme: IconThemeData(color: Colors.white),
       titleTextStyle: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18, fontFamily: 'Cairo'),
     ),
-    bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+    navigationBarTheme: NavigationBarThemeData(
       backgroundColor: surfaceDark,
-      selectedItemColor: accentEmerald,
-      unselectedItemColor: Colors.white54,
-      elevation: 8,
+      indicatorColor: accentEmerald.withOpacity(0.2),
+      iconTheme: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.selected)) {
+          return const IconThemeData(color: accentEmerald);
+        }
+        return const IconThemeData(color: Colors.white70);
+      }),
+      labelTextStyle: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.selected)) {
+          return const TextStyle(color: accentEmerald, fontWeight: FontWeight.bold, fontSize: 12);
+        }
+        return const TextStyle(color: Colors.white70, fontSize: 12);
+      }),
     ),
     cardTheme: CardThemeData(
       color: surfaceDark,

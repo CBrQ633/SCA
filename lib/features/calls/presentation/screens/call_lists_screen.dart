@@ -32,10 +32,66 @@ class _CallListsScreenState extends State<CallListsScreen> with SingleTickerProv
     super.dispose();
   }
 
+  void _showImportSummary(BuildContext context, Map<String, dynamic> summary) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: Row(
+          children: [
+            const Icon(Icons.auto_awesome_rounded, color: Color(0xFF10B981)),
+            const SizedBox(width: 12),
+            const Text('Import Complete', style: TextStyle(fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('List: ${summary['listName']}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.grey)),
+            const SizedBox(height: 16),
+            _buildSummaryRow(Icons.person_add_alt_1_rounded, 'New Contacts Added:', '${summary['added']}', Colors.green),
+            const SizedBox(height: 12),
+            _buildSummaryRow(Icons.copy_rounded, 'Duplicates Skipped:', '${summary['duplicates']}', Colors.orange),
+            const Divider(height: 32),
+            Text('Total processed: ${summary['total']}', style: const TextStyle(fontSize: 11, fontStyle: FontStyle.italic)),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              context.read<CallsProvider>().clearSummary();
+            },
+            child: const Text('GOT IT'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSummaryRow(IconData icon, String label, String value, Color color) {
+    return Row(
+      children: [
+        Icon(icon, size: 18, color: color),
+        const SizedBox(width: 12),
+        Expanded(child: Text(label, style: const TextStyle(fontSize: 14))),
+        Text(value, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: color)),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final callsProvider = context.watch<CallsProvider>();
+
+    // ✅ Listen for import results to show the summary dialog
+    if (callsProvider.lastImportSummary != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _showImportSummary(context, callsProvider.lastImportSummary!);
+      });
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -218,13 +274,11 @@ class _CallListsScreenState extends State<CallListsScreen> with SingleTickerProv
       final picker = ImagePicker();
       final img = await picker.pickImage(source: ImageSource.gallery);
       if (img != null) {
-        // Updated call to repository through provider might need adjustment if logic changed
         await callsProvider.importFromImage(File(img.path), userId);
       }
     } else {
       FilePickerResult? res = await FilePicker.platform.pickFiles(type: FileType.custom, allowedExtensions: ['xlsx', 'xls']);
       if (res != null) {
-        // We'll update the logic to show the summary dialog after import
         await callsProvider.importFromExcel(File(res.files.single.path!), userId);
       }
     }

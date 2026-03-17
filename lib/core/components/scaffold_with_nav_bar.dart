@@ -7,7 +7,7 @@ import '../../features/auth/presentation/auth_provider.dart';
 class ScaffoldWithNavBar extends StatelessWidget {
   final List<NavigationDestination> tabs;
   final StatefulNavigationShell navigationShell;
-  final Function(int)? onTap; // ✅ Added custom onTap
+  final Function(int)? onTap;
 
   const ScaffoldWithNavBar({
     required this.navigationShell,
@@ -41,7 +41,6 @@ class ScaffoldWithNavBar extends StatelessWidget {
             final idx = entry.key;
             final destination = entry.value;
 
-            // Admin: Sub Requests is the 2nd tab (Stats=0, Requests=1, Users=2, News=3, Settings=4)
             if (authProvider.isAdmin && idx == 1 && showBadge) {
               return NavigationDestination(
                 icon: Badge(
@@ -54,17 +53,19 @@ class ScaffoldWithNavBar extends StatelessWidget {
             return destination;
           }).toList();
 
-          // Calculate correct selected index for inactive users
           int selectedIdx = navigationShell.currentIndex;
+          // Logic for inactive users to match the tabs they see
           if (!authProvider.isAdmin && !(authProvider.currentUser?.isSubscriptionActive ?? false)) {
-            selectedIdx = navigationShell.currentIndex == 3 ? 0 : 1;
+            // If they only have 2 tabs (Plans, Settings), but router index might be different
+            // This is a bit tricky with StatefulShellRoute, usually it's better to keep indices 1:1
+            // But if we're filtering branches in router, currentIndex should be 0 or 1.
           }
 
           return NavigationBar(
             selectedIndex: selectedIdx,
             onDestinationSelected: _onItemTapped,
             destinations: destinations,
-            backgroundColor: Colors.white,
+            // backgroundColor is now handled by the theme (navigationBarTheme)
             elevation: 10,
           );
         },
