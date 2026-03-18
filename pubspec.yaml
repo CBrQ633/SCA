@@ -39,6 +39,9 @@ dependencies:
   hive: ^2.2.3
   hive_flutter: ^1.1.0
 
+  # Permissions
+  permission_handler: ^11.3.1
+
   # Internationalization
   intl: ^0.20.2
 

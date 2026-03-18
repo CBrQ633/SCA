@@ -4,11 +4,11 @@ import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:animate_do/animate_do.dart';
-import '../calls_provider.dart';
-import '../../auth/presentation/auth_provider.dart';
-import '../../../core/components/scaffold_with_nav_bar.dart';
 import 'package:go_router/go_router.dart';
-import '../../calls/data/calls_repository.dart';
+import '../calls_provider.dart';
+import '../../../features/auth/presentation/auth_provider.dart';
+import '../../../features/calls/data/calls_repository.dart';
+import '../../../features/calls/data/models/call_list_model.dart';
 
 class CallListsScreen extends StatefulWidget {
   const CallListsScreen({super.key});
@@ -33,11 +33,11 @@ class _CallListsScreenState extends State<CallListsScreen> with SingleTickerProv
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        title: Row(
+        title: const Row(
           children: [
-            const Icon(Icons.auto_awesome_rounded, color: Color(0xFF10B981)),
-            const SizedBox(width: 12),
-            const Text('Import Complete', style: TextStyle(fontWeight: FontWeight.bold)),
+            Icon(Icons.auto_awesome_rounded, color: Color(0xFF10B981)),
+            SizedBox(width: 12),
+            Text('Import Complete', style: TextStyle(fontWeight: FontWeight.bold)),
           ],
         ),
         content: Column(
@@ -77,7 +77,6 @@ class _CallListsScreenState extends State<CallListsScreen> with SingleTickerProv
     );
   }
 
-  // --- OCR PREVIEW ---
   Future<void> _showOCRPreview(List<String> foundNumbers, String userId) async {
     List<String> numbers = List.from(foundNumbers);
     final listNameController = TextEditingController(
@@ -139,7 +138,7 @@ class _CallListsScreenState extends State<CallListsScreen> with SingleTickerProv
                 final newList = await _repository.createList(name, userId);
                 final itemsToInsert = numbers.map((p) => {'name': 'Extracted', 'phone': p}).toList();
                 await _repository.addItemsToList(newList.id, itemsToInsert);
-                context.read<CallsProvider>().loadLists();
+                if (mounted) context.read<CallsProvider>().loadLists();
               },
               child: const Text('SAVE LIST'),
             ),
@@ -149,13 +148,11 @@ class _CallListsScreenState extends State<CallListsScreen> with SingleTickerProv
     );
   }
 
-  // --- NEW: EXCEL IMPORT PREVIEW WITH NAME EDITING ---
   Future<void> _showExcelImportPreview(List<List<dynamic>> rows, String fileName, String userId) async {
     int nameCol = 0;
     int phoneCol = 0;
     final listNameController = TextEditingController(text: 'Excel: $fileName');
     
-    // Heuristic for default columns
     if (rows.isNotEmpty) {
       for (int i = 0; i < rows[0].length; i++) {
         String val = rows[0][i]?.toString() ?? '';
@@ -226,8 +223,10 @@ class _CallListsScreenState extends State<CallListsScreen> with SingleTickerProv
                 if (processed.isNotEmpty) {
                   final newList = await _repository.createList(name, userId);
                   final result = await _repository.addItemsToList(newList.id, processed);
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Created "$name" with ${result['added']} contacts')));
-                  provider.loadLists();
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Created "$name" with ${result['added']} contacts')));
+                    provider.loadLists();
+                  }
                 }
               },
               child: const Text('IMPORT NOW'),
@@ -410,12 +409,12 @@ class _CallListsScreenState extends State<CallListsScreen> with SingleTickerProv
       final picker = ImagePicker();
       final img = await picker.pickImage(source: ImageSource.gallery);
       if (img != null) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Scanning image...')));
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Scanning image...')));
         final numbers = await _repository.extractNumbersFromImage(File(img.path));
         if (numbers.isNotEmpty) {
           await _showOCRPreview(numbers, userId);
         } else {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No numbers found!')));
+          if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No numbers found!')));
         }
       }
     } else {
@@ -423,7 +422,7 @@ class _CallListsScreenState extends State<CallListsScreen> with SingleTickerProv
       if (res != null) {
         final file = File(res.files.single.path!);
         final fileName = res.files.single.name.split('.').first;
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Reading Excel file...')));
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Reading Excel file...')));
         final rows = await _repository.readExcelRows(file);
         if (rows.isNotEmpty) {
           await _showExcelImportPreview(rows, fileName, userId);
@@ -445,8 +444,10 @@ class _CallListsScreenState extends State<CallListsScreen> with SingleTickerProv
             onPressed: () async {
               if (controller.text.isNotEmpty) {
                 await _repository.createList(controller.text, userId);
-                Navigator.pop(ctx);
-                context.read<CallsProvider>().loadLists();
+                if (mounted) {
+                  Navigator.pop(ctx);
+                  context.read<CallsProvider>().loadLists();
+                }
               }
             },
             child: const Text('Create'),
