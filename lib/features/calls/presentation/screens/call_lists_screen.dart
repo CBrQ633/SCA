@@ -5,10 +5,10 @@ import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:go_router/go_router.dart';
-import '../calls_provider.dart';
-import '../../../features/auth/presentation/auth_provider.dart';
-import '../../../features/calls/data/calls_repository.dart';
-import '../../../features/calls/data/models/call_list_model.dart';
+import 'package:smart_call_assistant/features/calls/presentation/calls_provider.dart';
+import 'package:smart_call_assistant/features/auth/presentation/auth_provider.dart';
+import 'package:smart_call_assistant/features/calls/data/calls_repository.dart';
+import 'package:smart_call_assistant/features/calls/data/models/call_list_model.dart';
 
 class CallListsScreen extends StatefulWidget {
   const CallListsScreen({super.key});
