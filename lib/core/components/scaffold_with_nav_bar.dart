@@ -54,18 +54,13 @@ class ScaffoldWithNavBar extends StatelessWidget {
           }).toList();
 
           int selectedIdx = navigationShell.currentIndex;
-          // Logic for inactive users to match the tabs they see
-          if (!authProvider.isAdmin && !(authProvider.currentUser?.isSubscriptionActive ?? false)) {
-            // If they only have 2 tabs (Plans, Settings), but router index might be different
-            // This is a bit tricky with StatefulShellRoute, usually it's better to keep indices 1:1
-            // But if we're filtering branches in router, currentIndex should be 0 or 1.
-          }
 
           return NavigationBar(
             selectedIndex: selectedIdx,
             onDestinationSelected: _onItemTapped,
             destinations: destinations,
-            // backgroundColor is now handled by the theme (navigationBarTheme)
+            // ✅ Fixed: Removed hardcoded Colors.white to support Dark Mode
+            backgroundColor: theme.navigationBarTheme.backgroundColor,
             elevation: 10,
           );
         },

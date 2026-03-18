@@ -9,6 +9,7 @@ import 'package:smart_call_assistant/features/calls/presentation/screens/call_li
 import 'package:smart_call_assistant/features/calls/presentation/screens/call_process_screen.dart';
 import 'package:smart_call_assistant/features/subscription/presentation/screens/subscription_screen.dart';
 import 'package:smart_call_assistant/features/settings/presentation/screens/settings_screen.dart';
+import 'package:smart_call_assistant/features/settings/presentation/screens/templates_screen.dart'; // Added
 import 'package:smart_call_assistant/features/admin/presentation/screens/admin_subscription_requests_screen.dart';
 import 'package:smart_call_assistant/features/news/presentation/screens/news_screen.dart';
 import 'package:smart_call_assistant/features/news/presentation/screens/admin_news_screen.dart';
@@ -29,9 +30,7 @@ class AppRouter {
       initialLocation: AppConstants.routeLogin,
       refreshListenable: authProvider,
       redirect: (context, state) {
-        // Allow public routes
         if (state.matchedLocation == '/confirm-email') return null;
-
         final isAuthenticated = authProvider.isAuthenticated;
         final isAuthRoute = state.matchedLocation == AppConstants.routeLogin ||
             state.matchedLocation == AppConstants.routeRegister;
@@ -108,6 +107,7 @@ class AppRouter {
                     GoRoute(path: AppConstants.routeSettings, builder: (context, state) => const SettingsScreen(), routes: [
                       GoRoute(path: 'how-to-use', builder: (context, state) => const HowToUseScreen()),
                       GoRoute(path: 'about', builder: (context, state) => const AboutScreen()),
+                      GoRoute(path: 'templates', builder: (context, state) => const TemplatesScreen()), // Added here
                     ]),
                   ]),
                 ]
@@ -125,6 +125,7 @@ class AppRouter {
                     GoRoute(path: AppConstants.routeSettings, builder: (context, state) => const SettingsScreen(), routes: [
                       GoRoute(path: 'how-to-use', builder: (context, state) => const HowToUseScreen()),
                       GoRoute(path: 'about', builder: (context, state) => const AboutScreen()),
+                      GoRoute(path: 'templates', builder: (context, state) => const TemplatesScreen()), // Added here
                     ]),
                   ]),
                 ],

@@ -2,6 +2,8 @@ import 'package:flutter/foundation.dart' as foundation;
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:timezone/timezone.dart' as tz;
+import 'package:timezone/data/latest.dart' as tz;
 
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
@@ -21,6 +23,8 @@ class NotificationService {
   );
 
   Future<void> initialize() async {
+    tz.initializeTimeZones(); // Initialize timezone data
+
     await FirebaseMessaging.instance.requestPermission(
       alert: true,
       badge: true,
@@ -91,6 +95,36 @@ class NotificationService {
       title,
       body,
       notificationDetails,
+      payload: payload,
+    );
+  }
+
+  // ✅ New: Schedule a notification
+  Future<void> scheduleNotification({
+    required int id,
+    required String title,
+    required String body,
+    required DateTime scheduledDate,
+    String? payload,
+  }) async {
+    await _localNotifications.zonedSchedule(
+      id,
+      title,
+      body,
+      tz.TZDateTime.from(scheduledDate, tz.local),
+      const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'scheduled_channel',
+          'Scheduled Notifications',
+          channelDescription: 'Channel for follow-up reminders',
+          importance: Importance.max,
+          priority: Priority.high,
+        ),
+        iOS: DarwinNotificationDetails(),
+      ),
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      uiLocalNotificationDateInterpretation:
+          UILocalNotificationDateInterpretation.absoluteTime,
       payload: payload,
     );
   }

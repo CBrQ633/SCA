@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:smart_call_assistant/features/auth/data/user_model.dart';
 import 'package:smart_call_assistant/core/utils/app_notifications.dart';
 import 'package:smart_call_assistant/features/auth/presentation/auth_provider.dart';
@@ -25,6 +26,15 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   static const double priceQuarterly = 250.0;
   static const String vodafoneCash = '01080305645';
   static const String instapay = '01550381486';
+  static const String adminWhatsapp = '201550381486'; // Updated with your provided number
+
+  Future<void> _contactSupport() async {
+    final message = Uri.encodeComponent("Hello SCA Support, I have a question regarding my subscription.");
+    final Uri url = Uri.parse("https://wa.me/$adminWhatsapp?text=$message");
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url, mode: LaunchMode.externalApplication);
+    }
+  }
 
   Future<void> _pickImage() async {
     final picker = ImagePicker();
@@ -47,7 +57,6 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
       if (mounted) {
         AppNotifications.showSuccess(context, 'Request submitted! / تم إرسال الطلب');
         setState(() { _selectedPlan = null; _proofImage = null; });
-        // Refresh profile to update UI status
         await context.read<AuthProvider>().refreshUser();
       }
     } catch (e) {
@@ -65,7 +74,6 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     final isRejected = user?.subscriptionStatus == 'rejected';
     
     final theme = Theme.of(context);
-    final textNavy = theme.colorScheme.onSurface;
 
     return Scaffold(
       appBar: AppBar(
@@ -77,28 +85,20 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Status Card
             _buildStatusCard(user, isActive, isPending, isRejected),
-            
+            const SizedBox(height: 24),
+            _buildSupportButton(theme),
             const SizedBox(height: 32),
-
             if (!isPending) ...[
               Text(isActive ? 'Upgrade Plan / ترقية الاشتراك' : 'Choose a Plan / اختر الباقة', 
                 style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
               const SizedBox(height: 16),
-
               if (!isActive) _buildPlanTile('Monthly / شهر', '100 EGP', 'monthly'),
               if (!isActive) const SizedBox(height: 12),
               _buildPlanTile('3 Months / ٣ شهور', '250 EGP', 'quarterly', isUpgrade: isActive),
-              
               const SizedBox(height: 24),
-              
-              // Payment Methods
               _buildPaymentInfoCard(),
-
               const SizedBox(height: 24),
-              
-              // Upload Area
               GestureDetector(
                 onTap: _pickImage,
                 child: Container(
@@ -119,7 +119,6 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                 ),
               ),
               const SizedBox(height: 32),
-              
               SizedBox(
                 width: double.infinity, height: 56,
                 child: ElevatedButton(
@@ -141,6 +140,36 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                 ),
               )
             ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSupportButton(ThemeData theme) {
+    return InkWell(
+      onTap: _contactSupport,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+        decoration: BoxDecoration(
+          color: Colors.green.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.green.withOpacity(0.3)),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.support_agent_rounded, color: Colors.green),
+            const SizedBox(width: 16),
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Need help or custom plan?', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                  Text('Contact admin on WhatsApp', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                ],
+              ),
+            ),
+            const Icon(Icons.chat_rounded, color: Colors.green, size: 20),
           ],
         ),
       ),

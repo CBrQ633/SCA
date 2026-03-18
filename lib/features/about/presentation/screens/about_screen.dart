@@ -76,7 +76,8 @@ class _AboutScreenState extends State<AboutScreen> {
                         icon: const Icon(Icons.language_rounded, size: 18),
                         label: const Text('Developer Website'),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: theme.colorScheme.primary,
+                          // ✅ Fixed: Using secondary/accent color for button to avoid white-on-white in Dark Mode
+                          backgroundColor: theme.colorScheme.secondary,
                           foregroundColor: Colors.white,
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         ),

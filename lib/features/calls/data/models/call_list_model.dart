@@ -1,11 +1,23 @@
+import 'package:hive/hive.dart';
+
+part 'call_list_model.g.dart';
+
+@HiveType(typeId: 0)
 class CallListModel {
+  @HiveField(0)
   final String id;
+  @HiveField(1)
   final String userId;
+  @HiveField(2)
   final String name;
+  @HiveField(3)
   final String status;
+  @HiveField(4)
   final DateTime createdAt;
-  final double progress; // Added
-  final int totalItems; // Added
+  @HiveField(5)
+  final double progress;
+  @HiveField(6)
+  final int totalItems;
 
   CallListModel({
     required this.id,
@@ -28,16 +40,36 @@ class CallListModel {
       totalItems: json['total_items'] as int? ?? 0,
     );
   }
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'user_id': userId,
+    'name': name,
+    'status': status,
+    'created_at': createdAt.toIso8601String(),
+    'progress': progress,
+    'total_items': totalItems,
+  };
 }
 
+@HiveType(typeId: 1)
 class CallListItemModel {
+  @HiveField(0)
   final String id;
+  @HiveField(1)
   final String listId;
+  @HiveField(2)
   final String? name;
+  @HiveField(3)
   final String phone;
+  @HiveField(4)
   final String status; // 'pending', 'called', 'no_answer', 'whatsapp'
+  @HiveField(5)
   final String? notes;
+  @HiveField(6)
   final DateTime createdAt;
+  @HiveField(7)
+  final DateTime? updatedAt;
 
   CallListItemModel({
     required this.id,
@@ -47,6 +79,7 @@ class CallListItemModel {
     required this.status,
     this.notes,
     required this.createdAt,
+    this.updatedAt,
   });
 
   factory CallListItemModel.fromJson(Map<String, dynamic> json) {
@@ -58,6 +91,18 @@ class CallListItemModel {
       status: json['status'] as String,
       notes: json['notes'] as String?,
       createdAt: DateTime.parse(json['created_at'] as String),
+      updatedAt: json['updated_at'] != null ? DateTime.parse(json['updated_at'] as String) : null,
     );
   }
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'list_id': listId,
+    'name': name,
+    'phone': phone,
+    'status': status,
+    'notes': notes,
+    'created_at': createdAt.toIso8601String(),
+    'updated_at': updatedAt?.toIso8601String(),
+  };
 }

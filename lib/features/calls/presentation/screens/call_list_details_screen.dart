@@ -3,7 +3,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:animate_do/animate_do.dart';
-import 'package:excel/excel.dart';
+import 'package:excel/excel.dart' as excel_lib;
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:smart_call_assistant/features/calls/data/calls_repository.dart';
@@ -23,9 +23,8 @@ class _CallListDetailsScreenState extends State<CallListDetailsScreen> {
   List<CallListItemModel> _items = [];
   bool _isLoading = true;
   
-  // Search & Filter State
   String _searchQuery = '';
-  String _selectedFilter = 'all'; // all, pending, called, no_answer, whatsapp
+  String _selectedFilter = 'all'; 
   final TextEditingController _searchController = TextEditingController();
 
   @override
@@ -72,28 +71,28 @@ class _CallListDetailsScreenState extends State<CallListDetailsScreen> {
 
     setState(() => _isLoading = true);
     try {
-      var excel = Excel.createExcel();
-      Sheet sheetObject = excel['Call Report'];
+      var excel = excel_lib.Excel.createExcel();
+      excel_lib.Sheet sheetObject = excel['Call Report'];
       excel.delete('Sheet1');
 
       sheetObject.appendRow([
-        TextCellValue('Index'),
-        TextCellValue('Name'),
-        TextCellValue('Phone'),
-        TextCellValue('Status'),
-        TextCellValue('Notes'),
-        TextCellValue('Date'),
+        excel_lib.TextCellValue('Index'),
+        excel_lib.TextCellValue('Name'),
+        excel_lib.TextCellValue('Phone'),
+        excel_lib.TextCellValue('Status'),
+        excel_lib.TextCellValue('Notes'),
+        excel_lib.TextCellValue('Date'),
       ]);
 
       for (int i = 0; i < itemsToExport.length; i++) {
         final item = itemsToExport[i];
         sheetObject.appendRow([
-          IntCellValue(i + 1),
-          TextCellValue(item.name ?? 'Unknown'),
-          TextCellValue(item.phone),
-          TextCellValue(item.status),
-          TextCellValue(item.notes ?? ''),
-          TextCellValue(item.createdAt.toString().substring(0, 16)),
+          excel_lib.IntCellValue(i + 1),
+          excel_lib.TextCellValue(item.name ?? 'Unknown'),
+          excel_lib.TextCellValue(item.phone),
+          excel_lib.TextCellValue(item.status),
+          excel_lib.TextCellValue(item.notes ?? ''),
+          excel_lib.TextCellValue(item.createdAt.toString().substring(0, 16)),
         ]);
       }
 
@@ -105,14 +104,111 @@ class _CallListDetailsScreenState extends State<CallListDetailsScreen> {
         File(filePath)
           ..createSync(recursive: true)
           ..writeAsBytesSync(fileBytes);
-
-        await Share.shareXFiles([XFile(filePath)], text: 'SCA Call Report / تقرير المكالمات');
+        await Share.shareXFiles([XFile(filePath)], text: 'SCA Call Report');
       }
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Export Error: $e')));
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  // --- NEW EXCEL IMPORT DIALOG ---
+  Future<void> _showExcelPreview(List<List<dynamic>> rows) async {
+    int nameCol = 0;
+    int phoneCol = 0;
+    
+    // Heuristic: try to find phone column (contains digits)
+    for (int i = 0; i < rows[0].length; i++) {
+      String val = rows[0][i]?.toString() ?? '';
+      if (RegExp(r'\d{8,}').hasMatch(val)) {
+        phoneCol = i;
+        break;
+      }
+    }
+    nameCol = phoneCol == 0 ? 1 : 0;
+
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          title: const Text('Excel Preview / معاينة البيانات', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Select columns for Name and Phone:', style: TextStyle(color: Colors.grey, fontSize: 13)),
+              const SizedBox(height: 16),
+              _buildColumnSelector('Name Column / عمود الاسم', nameCol, rows[0], (val) => setDialogState(() => nameCol = val!)),
+              const SizedBox(height: 12),
+              _buildColumnSelector('Phone Column / عمود الرقم', phoneCol, rows[0], (val) => setDialogState(() => phoneCol = val!)),
+              const Divider(height: 32),
+              const Text('Data Preview (First 3 rows):', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+              const SizedBox(height: 8),
+              Container(
+                decoration: BoxDecoration(color: Colors.grey.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+                padding: const EdgeInsets.all(8),
+                child: Column(
+                  children: rows.take(3).map((row) => Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 2),
+                    child: Row(
+                      children: [
+                        Expanded(child: Text(row.length > nameCol ? row[nameCol].toString() : '-', style: const TextStyle(fontSize: 11), overflow: TextOverflow.ellipsis)),
+                        const SizedBox(width: 8),
+                        Expanded(child: Text(row.length > phoneCol ? row[phoneCol].toString() : '-', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold))),
+                      ],
+                    ),
+                  )).toList(),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('CANCEL', style: TextStyle(color: Colors.red))),
+            ElevatedButton(
+              onPressed: () async {
+                Navigator.pop(ctx);
+                final processed = _repository.processExcelData(rows, nameCol, phoneCol);
+                if (processed.isNotEmpty) {
+                  setState(() => _isLoading = true);
+                  await _repository.addItemsToList(widget.listId, processed);
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Added ${processed.length} contacts')));
+                  _loadItems();
+                }
+              },
+              child: const Text('IMPORT NOW'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildColumnSelector(String label, int current, List<dynamic> headers, ValueChanged<int?> onChanged) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 4),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          decoration: BoxDecoration(border: Border.all(color: Colors.grey.withOpacity(0.3)), borderRadius: BorderRadius.circular(12)),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<int>(
+              value: current,
+              isExpanded: true,
+              items: List.generate(headers.length, (index) => DropdownMenuItem(
+                value: index,
+                child: Text('Column ${index + 1}: ${headers[index].toString().take(15)}', style: const TextStyle(fontSize: 13)),
+              )),
+              onChanged: onChanged,
+            ),
+          ),
+        ),
+      ],
+    );
   }
 
   Future<void> _importExcel() async {
@@ -123,28 +219,20 @@ class _CallListDetailsScreenState extends State<CallListDetailsScreen> {
       );
 
       if (result != null) {
-        setState(() => _isLoading = true);
         final file = File(result.files.single.path!);
-        final importedItems = await _repository.importFromExcel(file);
-
-        if (importedItems.isNotEmpty) {
-          await _repository.addItemsToList(widget.listId, importedItems);
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Imported ${importedItems.length} contacts')));
-            _loadItems();
-          }
+        setState(() => _isLoading = true);
+        final rows = await _repository.readExcelRows(file);
+        setState(() => _isLoading = false);
+        
+        if (rows.isNotEmpty) {
+          await _showExcelPreview(rows);
         } else {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No valid contacts found')));
-            setState(() => _isLoading = false);
-          }
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Excel file is empty')));
         }
       }
     } catch (e) {
-      if (mounted) {
-        setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Import Error: $e')));
-      }
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Import Error: $e')));
     }
   }
 
@@ -173,7 +261,6 @@ class _CallListDetailsScreenState extends State<CallListDetailsScreen> {
           ? const Center(child: CircularProgressIndicator())
           : Column(
               children: [
-                // Search Bar
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
                   child: TextField(
@@ -192,8 +279,6 @@ class _CallListDetailsScreenState extends State<CallListDetailsScreen> {
                     onChanged: (v) => setState(() => _searchQuery = v),
                   ),
                 ),
-
-                // Filter Chips
                 SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -207,7 +292,6 @@ class _CallListDetailsScreenState extends State<CallListDetailsScreen> {
                     ],
                   ),
                 ),
-
                 if (_items.isEmpty)
                   Expanded(
                     child: Center(
@@ -216,11 +300,11 @@ class _CallListDetailsScreenState extends State<CallListDetailsScreen> {
                         children: [
                           const AppLogo(size: 80, showText: false),
                           const SizedBox(height: 24),
-                          const Text('No contacts yet / لا توجد أسماء', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                          const Text('No contacts yet', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                           const SizedBox(height: 16),
                           ElevatedButton.icon(
                             icon: const Icon(Icons.upload_file),
-                            label: const Text('Import Excel / استيراد اكسيل'),
+                            label: const Text('Import Excel'),
                             onPressed: _importExcel,
                           ),
                         ],
@@ -255,23 +339,18 @@ class _CallListDetailsScreenState extends State<CallListDetailsScreen> {
                       },
                     ),
                   ),
-
-                // Start Button Banner (Only if list not empty)
                 if (_items.isNotEmpty && _searchQuery.isEmpty && _selectedFilter == 'all')
                   FadeInUp(
                     child: Container(
                       width: double.infinity,
                       margin: const EdgeInsets.all(16),
                       padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.primary,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
+                      decoration: BoxDecoration(color: theme.colorScheme.primary, borderRadius: BorderRadius.circular(20)),
                       child: Row(
                         children: [
                           const Icon(Icons.flash_on_rounded, color: Colors.amber),
                           const SizedBox(width: 12),
-                          const Expanded(child: Text('Start calling session?', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))),
+                          const Expanded(child: Text('Start session?', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))),
                           ElevatedButton(
                             onPressed: () async {
                               await context.push('/calls/${widget.listId}/process');
@@ -302,38 +381,18 @@ class _CallListDetailsScreenState extends State<CallListDetailsScreen> {
         checkmarkColor: Colors.white,
         backgroundColor: theme.colorScheme.primary.withOpacity(0.05),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        side: BorderSide(color: isSelected ? Colors.transparent : theme.colorScheme.primary.withOpacity(0.1)),
       ),
     );
   }
 
   Widget _getStatusBadge(String status, ThemeData theme) {
-    Color color;
-    IconData icon;
-    String label;
-
+    Color color; IconData icon; String label;
     switch (status) {
-      case 'called':
-        color = theme.colorScheme.secondary;
-        icon = Icons.check_circle_rounded;
-        label = 'Done';
-        break;
-      case 'no_answer':
-        color = Colors.redAccent;
-        icon = Icons.phone_missed_rounded;
-        label = 'Missed';
-        break;
-      case 'whatsapp':
-        color = const Color(0xFF128C7E);
-        icon = Icons.chat_rounded;
-        label = 'WA';
-        break;
-      default:
-        color = Colors.grey;
-        icon = Icons.hourglass_top_rounded;
-        label = 'Pending';
+      case 'called': color = theme.colorScheme.secondary; icon = Icons.check_circle_rounded; label = 'Done'; break;
+      case 'no_answer': color = Colors.redAccent; icon = Icons.phone_missed_rounded; label = 'Missed'; break;
+      case 'whatsapp': color = const Color(0xFF128C7E); icon = Icons.chat_rounded; label = 'WA'; break;
+      default: color = Colors.grey; icon = Icons.hourglass_top_rounded; label = 'Pending';
     }
-
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
@@ -347,4 +406,8 @@ class _CallListDetailsScreenState extends State<CallListDetailsScreen> {
       ),
     );
   }
+}
+
+extension StringExtension on String {
+  String take(int n) => length <= n ? this : '${substring(0, n)}...';
 }

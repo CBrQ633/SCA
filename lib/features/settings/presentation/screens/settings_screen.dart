@@ -45,6 +45,13 @@ class SettingsScreen extends StatelessWidget {
               value: settingsProvider.isDarkMode,
               onChanged: (v) => settingsProvider.toggleTheme(),
             ),
+            const Divider(height: 1, indent: 50),
+            _buildNavRow(
+              theme: theme,
+              icon: Icons.chat_bubble_outline_rounded,
+              title: isArabic ? 'قوالب الواتساب' : 'WhatsApp Templates',
+              onTap: () => context.push('/settings/templates'),
+            ),
           ]),
 
           const SizedBox(height: 24),
@@ -96,14 +103,10 @@ class SettingsScreen extends StatelessWidget {
 
   Widget _buildMenuCard(ThemeData theme, List<Widget> children) {
     return Container(
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: theme.cardTheme.color,
         borderRadius: BorderRadius.circular(20),
-        border: theme.cardTheme.shape is RoundedRectangleBorder 
-          ? (theme.cardTheme.shape as RoundedRectangleBorder).side != BorderSide.none 
-            ? Border.fromBorderSide((theme.cardTheme.shape as RoundedRectangleBorder).side)
-            : null
-          : null,
         boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 12, offset: const Offset(0, 4))],
       ),
       child: Column(children: children),

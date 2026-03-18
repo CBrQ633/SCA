@@ -6,6 +6,9 @@ import 'package:smart_call_assistant/features/calls/data/calls_repository.dart';
 import 'package:smart_call_assistant/features/calls/data/models/call_list_model.dart';
 import 'package:smart_call_assistant/core/components/app_logo.dart';
 import 'package:smart_call_assistant/core/constants/app_constants.dart';
+import 'package:smart_call_assistant/core/services/notification_service.dart';
+import 'package:smart_call_assistant/core/services/template_service.dart';
+import 'package:firebase_analytics/firebase_analytics.dart';
 
 class CallProcessScreen extends StatefulWidget {
   final String listId;
@@ -17,20 +20,24 @@ class CallProcessScreen extends StatefulWidget {
 
 class _CallProcessScreenState extends State<CallProcessScreen> {
   final CallsRepository _repository = CallsRepository();
+  final TemplateService _templateService = TemplateService();
   final _notesController = TextEditingController();
+  
   List<CallListItemModel> _items = [];
   int _currentIndex = 0;
   bool _isLoading = true;
   bool _isFinished = false;
 
-  // WhatsApp Templates State
-  String _whatsappTemplate = '';
+  // Stats for the summary
+  int _statsAnswered = 0;
+  int _statsMissed = 0;
+  int _statsWhatsapp = 0;
 
   @override
   void initState() {
     super.initState();
     _loadPendingItems();
-    _loadWhatsAppTemplate();
+    _templateService.seedDefaults();
   }
 
   @override
@@ -39,29 +46,19 @@ class _CallProcessScreenState extends State<CallProcessScreen> {
     super.dispose();
   }
 
-  Future<void> _loadWhatsAppTemplate() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _whatsappTemplate = prefs.getString('whatsapp_template') ?? '';
-    });
-  }
-
-  Future<void> _saveWhatsAppTemplate(String template) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('whatsapp_template', template);
-    setState(() => _whatsappTemplate = template);
-  }
-
   Future<void> _loadPendingItems() async {
     try {
       final allItems = await _repository.getListItems(widget.listId);
       final pendingFn = allItems.where((i) => i.status == 'pending' || i.status == 'no_answer').toList();
+      
       if (pendingFn.isEmpty) {
         if (mounted) setState(() { _isFinished = true; _isLoading = false; });
         return;
       }
+      
       final prefs = await SharedPreferences.getInstance();
       final savedIndex = prefs.getInt('call_index_${widget.listId}') ?? 0;
+      
       if (mounted) {
         setState(() {
           _items = pendingFn;
@@ -76,26 +73,79 @@ class _CallProcessScreenState extends State<CallProcessScreen> {
 
   Future<void> _makeCall(String phoneNumber) async {
     final Uri launchUri = Uri(scheme: 'tel', path: phoneNumber);
-    if (await canLaunchUrl(launchUri)) await launchUrl(launchUri);
+    if (await canLaunchUrl(launchUri)) {
+      await launchUrl(launchUri);
+      FirebaseAnalytics.instance.logEvent(name: 'call_initiated');
+    }
   }
 
-  Future<void> _openWhatsApp(String phoneNumber, String? name) async {
+  void _showWhatsAppOptions(String phoneNumber, String? name) {
+    final templates = _templateService.getTemplates();
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Send WhatsApp / إرسال واتساب', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 16),
+            if (templates.isEmpty)
+              const Center(child: Text('No templates found.'))
+            else
+              ConstrainedBox(
+                constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.4),
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: templates.length,
+                  itemBuilder: (c, i) => ListTile(
+                    leading: const Icon(Icons.chat_bubble_outline_rounded, color: Color(0xFF128C7E)),
+                    title: Text(templates[i], maxLines: 2, overflow: TextOverflow.ellipsis),
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      _sendWhatsApp(phoneNumber, name, templates[i]);
+                    },
+                  ),
+                ),
+              ),
+            const Divider(),
+            ListTile(
+              leading: const Icon(Icons.edit_note_rounded),
+              title: const Text('Send without template'),
+              onTap: () {
+                Navigator.pop(ctx);
+                _sendWhatsApp(phoneNumber, name, "");
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _sendWhatsApp(String phoneNumber, String? name, String rawMessage) async {
     String cleanPhone = phoneNumber.replaceAll(RegExp(r'\D'), '');
     if (cleanPhone.startsWith('0') && cleanPhone.length == 11) cleanPhone = '20${cleanPhone.substring(1)}';
-    
-    // Process template: replace {name} with actual name
-    String message = _whatsappTemplate.replaceAll('{name}', name ?? '');
+    String message = rawMessage.replaceAll('{name}', name ?? '');
     String encodedMsg = Uri.encodeComponent(message);
     
     final Uri launchUri = Uri.parse('https://wa.me/$cleanPhone?text=$encodedMsg');
     if (await canLaunchUrl(launchUri)) {
       await launchUrl(launchUri, mode: LaunchMode.externalApplication);
+      _statsWhatsapp++;
       _updateStatus('whatsapp');
+      FirebaseAnalytics.instance.logEvent(name: 'whatsapp_sent');
     }
   }
 
   Future<void> _updateStatus(String status) async {
     if (_items.isEmpty || _currentIndex >= _items.length) return;
+    
+    if (status == 'called') _statsAnswered++;
+    if (status == 'no_answer') _statsMissed++;
+
     final currentItem = _items[_currentIndex];
     final notes = _notesController.text.trim().isEmpty ? null : _notesController.text.trim();
     
@@ -111,7 +161,7 @@ class _CallProcessScreenState extends State<CallProcessScreen> {
         } else {
           await prefs.remove('call_index_${widget.listId}');
           setState(() => _isFinished = true);
-          _showCompletionDialog();
+          _showCompletionSummary();
         }
       }
     } catch (e) {
@@ -119,67 +169,89 @@ class _CallProcessScreenState extends State<CallProcessScreen> {
     }
   }
 
-  void _showCompletionDialog() {
+  void _showCompletionSummary() {
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        title: const Text('All Done! / انتهيت', style: TextStyle(fontWeight: FontWeight.bold)),
-        content: const Text('List completed successfully.\nلقد أكملت جميع جهات الاتصال.'),
-        actions: [
-          ElevatedButton(
-            onPressed: () { Navigator.of(ctx).pop(); context.go(AppConstants.routeHome); },
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0F172A), foregroundColor: Colors.white),
-            child: const Text('OK / حسناً'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showTemplateDialog() {
-    final controller = TextEditingController(text: _whatsappTemplate);
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('WhatsApp Template'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('Use {name} to insert contact name automatically.', style: TextStyle(fontSize: 12, color: Colors.grey)),
+            const Icon(Icons.stars_rounded, size: 60, color: Colors.amber),
+            const SizedBox(height: 16),
+            const Text('Great Work! / عمل رائع', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            const Text('You have finished this list.', style: TextStyle(color: Colors.grey)),
+            const Divider(height: 32),
+            _buildStatRow(Icons.check_circle_rounded, 'Answered:', '$_statsAnswered', Colors.green),
             const SizedBox(height: 12),
-            TextField(
-              controller: controller,
-              maxLines: 4,
-              decoration: const InputDecoration(
-                hintText: 'Enter your message template here...',
-                border: OutlineInputBorder(),
+            _buildStatRow(Icons.cancel_rounded, 'Missed:', '$_statsMissed', Colors.red),
+            const SizedBox(height: 12),
+            _buildStatRow(Icons.chat_rounded, 'WhatsApp:', '$_statsWhatsapp', Colors.teal),
+            const SizedBox(height: 32),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () { Navigator.of(ctx).pop(); context.go(AppConstants.routeHome); },
+                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0F172A), foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 16)),
+                child: const Text('FINISH SESSION'),
               ),
             ),
           ],
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-          ElevatedButton(
-            onPressed: () {
-              _saveWhatsAppTemplate(controller.text);
-              Navigator.pop(ctx);
-            },
-            child: const Text('Save Template'),
-          ),
-        ],
       ),
     );
+  }
+
+  Widget _buildStatRow(IconData icon, String label, String value, Color color) {
+    return Row(
+      children: [
+        Icon(icon, size: 18, color: color),
+        const SizedBox(width: 12),
+        Expanded(child: Text(label, style: const TextStyle(fontWeight: FontWeight.w500))),
+        Text(value, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: color)),
+      ],
+    );
+  }
+
+  void _showReminderPicker() async {
+    final currentItem = _items[_currentIndex];
+    final DateTime? pickedDate = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now().add(const Duration(days: 1)),
+      firstDate: DateTime.now(),
+      lastDate: DateTime.now().add(const Duration(days: 30)),
+    );
+
+    if (pickedDate != null && mounted) {
+      final TimeOfDay? pickedTime = await showTimePicker(
+        context: context,
+        initialTime: const TimeOfDay(hour: 10, minute: 0),
+      );
+
+      if (pickedTime != null) {
+        final scheduledDateTime = DateTime(
+          pickedDate.year, pickedDate.month, pickedDate.day,
+          pickedTime.hour, pickedTime.minute,
+        );
+
+        await NotificationService().scheduleNotification(
+          id: currentItem.id.hashCode,
+          title: 'Follow-up Reminder 📞',
+          body: 'Call ${currentItem.name ?? "Unknown"} (${currentItem.phone}) now!',
+          scheduledDate: scheduledDateTime,
+        );
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Reminder set!')));
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     if (_isLoading) return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    if (_isFinished || _items.isEmpty) {
-      return Scaffold(body: Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [const AppLogo(size: 80, showText: false), const SizedBox(height: 24), const Text('All caught up!', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)), const SizedBox(height: 24), ElevatedButton(onPressed: () => context.go(AppConstants.routeHome), child: const Text('Return Home'))])));
-    }
+    if (_isFinished || _items.isEmpty) return const Scaffold(body: Center(child: Text('Session Ended')));
 
     final currentItem = _items[_currentIndex];
 
@@ -187,11 +259,8 @@ class _CallProcessScreenState extends State<CallProcessScreen> {
       appBar: AppBar(
         title: Text('Call ${_currentIndex + 1} / ${_items.length}', style: const TextStyle(fontSize: 16)),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.settings_suggest_rounded, color: Color(0xFF128C7E)),
-            tooltip: 'WhatsApp Template',
-            onPressed: _showTemplateDialog,
-          ),
+          IconButton(icon: const Icon(Icons.alarm_add_rounded, color: Colors.orange), onPressed: _showReminderPicker),
+          IconButton(icon: const Icon(Icons.settings_rounded), onPressed: () => context.push('/settings/templates')),
         ],
         bottom: PreferredSize(preferredSize: const Size.fromHeight(4), child: LinearProgressIndicator(value: (_currentIndex + 1) / _items.length, backgroundColor: theme.colorScheme.surface, valueColor: AlwaysStoppedAnimation<Color>(theme.colorScheme.secondary))),
       ),
@@ -202,12 +271,7 @@ class _CallProcessScreenState extends State<CallProcessScreen> {
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(32),
-              decoration: BoxDecoration(
-                color: theme.cardTheme.color, 
-                borderRadius: BorderRadius.circular(28), 
-                border: Border.all(color: Colors.black.withOpacity(0.05)),
-                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 20)]
-              ),
+              decoration: BoxDecoration(color: theme.cardTheme.color, borderRadius: BorderRadius.circular(28), border: Border.all(color: Colors.black.withOpacity(0.05))),
               child: Column(
                 children: [
                   CircleAvatar(radius: 40, backgroundColor: theme.colorScheme.primary, child: Text(currentItem.name?[0] ?? '?', style: const TextStyle(fontSize: 30, color: Colors.white, fontWeight: FontWeight.bold))),
@@ -221,25 +285,12 @@ class _CallProcessScreenState extends State<CallProcessScreen> {
             const SizedBox(height: 32),
             Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
               _buildBtn(Icons.call_rounded, 'Call', Colors.blue, () => _makeCall(currentItem.phone)),
-              _buildBtn(Icons.chat_rounded, 'WhatsApp', const Color(0xFF128C7E), () => _openWhatsApp(currentItem.phone, currentItem.name)),
+              _buildBtn(Icons.chat_rounded, 'WhatsApp', const Color(0xFF128C7E), () => _showWhatsAppOptions(currentItem.phone, currentItem.name)),
             ]),
-            const SizedBox(height: 12),
-            if (_whatsappTemplate.isNotEmpty)
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(color: Colors.green.withOpacity(0.05), borderRadius: BorderRadius.circular(8)),
-                child: Text('Template Active / الرسالة الجاهزة مفعلة', style: TextStyle(fontSize: 10, color: Colors.green[700], fontWeight: FontWeight.bold)),
-              ),
             const SizedBox(height: 32),
             TextField(
               controller: _notesController,
-              decoration: InputDecoration(
-                labelText: 'Notes / ملاحظات (Optional)',
-                hintText: 'Interested, call next week...',
-                filled: true,
-                fillColor: theme.colorScheme.surface,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-              ),
+              decoration: InputDecoration(labelText: 'Notes / ملاحظات', filled: true, fillColor: theme.colorScheme.surface, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none)),
               maxLines: 2,
             ),
             const SizedBox(height: 32),
@@ -249,7 +300,7 @@ class _CallProcessScreenState extends State<CallProcessScreen> {
               Expanded(child: OutlinedButton(onPressed: () => _updateStatus('no_answer'), style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16)), child: const Text('MISSED'))),
             ]),
             const SizedBox(height: 16),
-            TextButton(onPressed: () => setState(() => _currentIndex < _items.length - 1 ? _currentIndex++ : _showCompletionDialog()), child: const Text('Skip / تخطي')),
+            TextButton(onPressed: () => setState(() => _currentIndex < _items.length - 1 ? _currentIndex++ : _showCompletionSummary()), child: const Text('Skip / تخطي')),
           ],
         ),
       ),
