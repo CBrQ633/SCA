@@ -87,7 +87,7 @@ class _CallListsScreenState extends State<CallListsScreen> with SingleTickerProv
       context: context,
       barrierDismissible: false,
       builder: (ctx) => StatefulBuilder(
-        builder: (context, setState) => AlertDialog(
+        builder: (context, setDialogState) => AlertDialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
           title: const Text('Review OCR / مراجعة الأرقام', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
           content: SizedBox(
@@ -118,7 +118,7 @@ class _CallListsScreenState extends State<CallListsScreen> with SingleTickerProv
                           title: Text(numbers[i], style: const TextStyle(fontWeight: FontWeight.bold)),
                           trailing: IconButton(
                             icon: const Icon(Icons.remove_circle_outline, color: Colors.redAccent),
-                            onPressed: () => setState(() => numbers.removeAt(i)),
+                            onPressed: () => setDialogState(() => numbers.removeAt(i)),
                           ),
                         ),
                       ),
@@ -134,11 +134,22 @@ class _CallListsScreenState extends State<CallListsScreen> with SingleTickerProv
               onPressed: numbers.isEmpty ? null : () async {
                 final name = listNameController.text.trim();
                 if (name.isEmpty) return;
+                
+                final provider = context.read<CallsProvider>();
                 Navigator.pop(ctx);
-                final newList = await _repository.createList(name, userId);
-                final itemsToInsert = numbers.map((p) => {'name': 'Extracted', 'phone': p}).toList();
-                await _repository.addItemsToList(newList.id, itemsToInsert);
-                if (mounted) context.read<CallsProvider>().loadLists();
+                
+                try {
+                  final newList = await _repository.createList(name, userId);
+                  final itemsToInsert = numbers.map((p) => {'name': 'Extracted', 'phone': p}).toList();
+                  final result = await _repository.addItemsToList(newList.id, itemsToInsert);
+                  
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Success! Added ${result['added']} contacts.')));
+                    provider.loadLists();
+                  }
+                } catch (e) {
+                  if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+                }
               },
               child: const Text('SAVE LIST'),
             ),
@@ -215,18 +226,26 @@ class _CallListsScreenState extends State<CallListsScreen> with SingleTickerProv
               onPressed: () async {
                 final name = listNameController.text.trim();
                 if (name.isEmpty) return;
-                Navigator.pop(ctx);
                 
                 final provider = context.read<CallsProvider>();
-                final processed = _repository.processExcelData(rows, nameCol, phoneCol);
-                
-                if (processed.isNotEmpty) {
-                  final newList = await _repository.createList(name, userId);
-                  final result = await _repository.addItemsToList(newList.id, processed);
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Created "$name" with ${result['added']} contacts')));
-                    provider.loadLists();
+                Navigator.pop(ctx);
+
+                try {
+                  final dataRows = rows.length > 1 ? rows.sublist(1) : rows;
+                  final processed = _repository.processExcelData(dataRows, nameCol, phoneCol);
+                  
+                  if (processed.isNotEmpty) {
+                    final newList = await _repository.createList(name, userId);
+                    final result = await _repository.addItemsToList(newList.id, processed);
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Created "$name" with ${result['added']} contacts.')));
+                      provider.loadLists();
+                    }
+                  } else {
+                    if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No valid numbers found!')));
                   }
+                } catch (e) {
+                  if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
                 }
               },
               child: const Text('IMPORT NOW'),

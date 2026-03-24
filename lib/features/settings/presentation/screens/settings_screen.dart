@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:smart_call_assistant/features/auth/presentation/auth_provider.dart';
 import 'package:smart_call_assistant/core/providers/settings_provider.dart';
@@ -11,6 +12,8 @@ class SettingsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final settingsProvider = context.watch<SettingsProvider>();
+    final authProvider = context.watch<AuthProvider>();
+    final user = authProvider.currentUser;
     final isArabic = settingsProvider.locale.languageCode == 'ar';
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
@@ -25,7 +28,9 @@ class SettingsScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [
-          const Center(child: AppLogo(size: 70, showText: true)),
+          // ✅ User Profile Card (SCA ID System)
+          if (user != null) _buildProfileCard(context, user, isArabic),
+          
           const SizedBox(height: 32),
           
           _buildSectionLabel(isArabic ? 'التفضيلات' : 'Preferences', theme),
@@ -89,6 +94,71 @@ class SettingsScreen extends StatelessWidget {
           
           const SizedBox(height: 20),
           Center(child: Text('App Version 1.1.0', style: TextStyle(color: theme.textTheme.bodySmall?.color, fontSize: 12))),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProfileCard(BuildContext context, dynamic user, bool isArabic) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.primary,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [BoxShadow(color: theme.colorScheme.primary.withOpacity(0.3), blurRadius: 15, offset: const Offset(0, 8))],
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 30,
+                backgroundColor: Colors.white.withOpacity(0.2),
+                child: Text(user.fullName?[0].toUpperCase() ?? 'U', style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(user.fullName ?? 'User', style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), borderRadius: BorderRadius.circular(8)),
+                      child: Text(
+                        user.role.toString().replaceAll('_', ' ').toUpperCase(),
+                        style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          const Divider(color: Colors.white24),
+          const SizedBox(height: 10),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(isArabic ? 'هويتك الفريدة' : 'YOUR SCA ID', style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 10, fontWeight: FontWeight.bold)),
+                  Text(user.scaId ?? 'SCA-XXXXXX', style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w900, letterSpacing: 1.5)),
+                ],
+              ),
+              IconButton(
+                onPressed: () {
+                  Clipboard.setData(ClipboardData(text: user.scaId ?? ''));
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(isArabic ? 'تم نسخ المعرف!' : 'ID Copied to clipboard!')));
+                },
+                icon: const Icon(Icons.copy_rounded, color: Colors.white),
+                style: IconButton.styleFrom(backgroundColor: Colors.white.withOpacity(0.1)),
+              )
+            ],
+          ),
         ],
       ),
     );

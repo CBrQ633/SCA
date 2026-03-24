@@ -4,12 +4,13 @@ import 'package:smart_call_assistant/features/auth/presentation/auth_provider.da
 import 'package:smart_call_assistant/features/auth/presentation/screens/login_screen.dart';
 import 'package:smart_call_assistant/features/auth/presentation/screens/register_screen.dart';
 import 'package:smart_call_assistant/features/auth/presentation/screens/email_confirmation_success_screen.dart';
+import 'package:smart_call_assistant/features/auth/presentation/screens/onboarding_screen.dart'; // Added
 import 'package:smart_call_assistant/features/calls/presentation/screens/call_lists_screen.dart';
 import 'package:smart_call_assistant/features/calls/presentation/screens/call_list_details_screen.dart';
 import 'package:smart_call_assistant/features/calls/presentation/screens/call_process_screen.dart';
 import 'package:smart_call_assistant/features/subscription/presentation/screens/subscription_screen.dart';
 import 'package:smart_call_assistant/features/settings/presentation/screens/settings_screen.dart';
-import 'package:smart_call_assistant/features/settings/presentation/screens/templates_screen.dart'; // Added
+import 'package:smart_call_assistant/features/settings/presentation/screens/templates_screen.dart';
 import 'package:smart_call_assistant/features/admin/presentation/screens/admin_subscription_requests_screen.dart';
 import 'package:smart_call_assistant/features/news/presentation/screens/news_screen.dart';
 import 'package:smart_call_assistant/features/news/presentation/screens/admin_news_screen.dart';
@@ -45,8 +46,14 @@ class AppRouter {
         if (!authProvider.isAdmin) {
           final isActive = authProvider.currentUser?.isSubscriptionActive ?? false;
           final path = state.matchedLocation;
-          final isAllowed = path.startsWith('/subscription') || path.startsWith('/settings');
-          if (!isActive && !isAllowed) return AppConstants.routeSubscription;
+          
+          // Allow onboarding and sub routes
+          final isAllowed = path.startsWith('/subscription') || path.startsWith('/settings') || path.startsWith('/onboarding');
+          
+          // If not active, but just registered, show onboarding
+          if (!isActive && !isAllowed) {
+             return '/onboarding';
+          }
         }
 
         return null;
@@ -55,6 +62,7 @@ class AppRouter {
         GoRoute(path: AppConstants.routeLogin, builder: (context, state) => const LoginScreen()),
         GoRoute(path: AppConstants.routeRegister, builder: (context, state) => const RegisterScreen()),
         GoRoute(path: '/confirm-email', builder: (context, state) => const EmailConfirmationSuccessScreen()),
+        GoRoute(path: '/onboarding', builder: (context, state) => const OnboardingScreen()), // Added
         
         StatefulShellRoute.indexedStack(
           builder: (context, state, navigationShell) {
@@ -107,7 +115,7 @@ class AppRouter {
                     GoRoute(path: AppConstants.routeSettings, builder: (context, state) => const SettingsScreen(), routes: [
                       GoRoute(path: 'how-to-use', builder: (context, state) => const HowToUseScreen()),
                       GoRoute(path: 'about', builder: (context, state) => const AboutScreen()),
-                      GoRoute(path: 'templates', builder: (context, state) => const TemplatesScreen()), // Added here
+                      GoRoute(path: 'templates', builder: (context, state) => const TemplatesScreen()),
                     ]),
                   ]),
                 ]
@@ -125,7 +133,7 @@ class AppRouter {
                     GoRoute(path: AppConstants.routeSettings, builder: (context, state) => const SettingsScreen(), routes: [
                       GoRoute(path: 'how-to-use', builder: (context, state) => const HowToUseScreen()),
                       GoRoute(path: 'about', builder: (context, state) => const AboutScreen()),
-                      GoRoute(path: 'templates', builder: (context, state) => const TemplatesScreen()), // Added here
+                      GoRoute(path: 'templates', builder: (context, state) => const TemplatesScreen()),
                     ]),
                   ]),
                 ],
