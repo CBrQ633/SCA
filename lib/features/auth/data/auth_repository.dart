@@ -17,102 +17,112 @@ class AuthRepository {
       final response = await _supabase.from('profiles').select().eq('id', user.id).maybeSingle();
       if (response == null) return null;
       return UserModel.fromJson(response);
+    } catch (e) { return null; }
+  }
+
+  // --- LEADERBOARD & TEAM METHODS ---
+
+  Future<List<Map<String, dynamic>>> getGlobalLeaderboard() async {
+    try {
+      // جلب جميع المستخدمين مع بياناتهم
+      final usersResponse = await _supabase.from('profiles').select('id, full_name, sca_id, monthly_target, role').eq('role', 'sales_user');
+      final users = usersResponse as List;
+      
+      List<Map<String, dynamic>> leaderboard = [];
+
+      for (var user in users) {
+        // حساب الإنجاز الفعلي لكل مستخدم
+        final statsResponse = await _supabase
+            .from('call_list_items')
+            .select('status')
+            .filter('list_id', 'in', 
+              _supabase.from('call_lists').select('id').eq('user_id', user['id'])
+            );
+        
+        final items = statsResponse as List;
+        int achieved = items.where((i) => i['status'] == 'answered' || i['status'] == 'no_answer').length;
+        int target = user['monthly_target'] ?? 0;
+        double score = target > 0 ? (achieved / target) : 0.0;
+
+        leaderboard.add({
+          'full_name': user['full_name'],
+          'sca_id': user['sca_id'],
+          'achieved': achieved,
+          'target': target,
+          'score': score,
+        });
+      }
+
+      // ترتيب حسب الأعلى تقييماً
+      leaderboard.sort((a, b) => b['score'].compareTo(a['score']));
+      return leaderboard;
     } catch (e) {
-      foundation.debugPrint('Error fetching profile: $e');
-      return null;
+      return [];
     }
+  }
+
+  // ... (باقي الدوال كما هي)
+  Future<UserModel?> findUserByScaId(String scaId) async {
+    final response = await _supabase.from('profiles').select().eq('sca_id', scaId.toUpperCase()).maybeSingle();
+    return response != null ? UserModel.fromJson(response) : null;
+  }
+
+  Future<void> updateMemberTarget(String memberId, int target) async {
+    await _supabase.from('profiles').update({'monthly_target': target}).eq('id', memberId);
+  }
+
+  Future<void> addMemberToTeam(String leaderId, String memberId) async {
+    await _supabase.from('profiles').update({'leader_id': leaderId}).eq('id', memberId);
+  }
+
+  Future<void> sendBroadcast(String leaderId, String content) async {
+    await _supabase.from('team_messages').insert({'leader_id': leaderId, 'content': content});
+  }
+
+  Future<List<Map<String, dynamic>>> getTeamMessages(String leaderId) async {
+    final response = await _supabase.from('team_messages').select().eq('leader_id', leaderId).order('created_at', ascending: false);
+    return List<Map<String, dynamic>>.from(response);
+  }
+
+  Future<void> createPrivateTask({required String leaderId, required String memberId, required String title, String? description}) async {
+    await _supabase.from('team_tasks').insert({'leader_id': leaderId, 'member_id': memberId, 'title': title, 'description': description});
+  }
+
+  Future<List<Map<String, dynamic>>> getMyTasks(String userId) async {
+    final response = await _supabase.from('team_tasks').select().or('member_id.eq.$userId,member_id.is.null').order('created_at', ascending: false);
+    return List<Map<String, dynamic>>.from(response);
+  }
+
+  Future<void> updateTaskStatus(String taskId, bool isCompleted) async {
+    await _supabase.from('team_tasks').update({'is_completed': isCompleted}).eq('id', taskId);
   }
 
   Future<UserModel?> login({required String email, required String password}) async {
-    try {
-      final authResponse = await _supabase.auth.signInWithPassword(email: email, password: password);
-      if (authResponse.user == null) throw Exception('Login failed / فشل تسجيل الدخول');
-
-      final profile = await getCurrentUser();
-      if (profile == null) throw Exception('Profile not found / لم يتم العثور على الملف الشخصي');
-
-      _updateFcmTokenInBackground(authResponse.user!.id);
-      return profile;
-    } catch (e) {
-      foundation.debugPrint('Login error: $e');
-      rethrow;
-    }
-  }
-
-  Future<void> updateUserDeviceId(String userId, String deviceId) async {
-    try {
-      await _supabase.from('profiles').update({'current_device_id': deviceId}).eq('id', userId);
-    } catch (e) {
-      foundation.debugPrint('Failed to update device ID: $e');
-    }
+    await _supabase.auth.signInWithPassword(email: email, password: password);
+    return await getCurrentUser();
   }
 
   Future<void> register({required String email, required String password, required String fullName}) async {
-    try {
-      // ✅ Added redirectTo to match our Deep Link sca://confirm-email
-      final authResponse = await _supabase.auth.signUp(
-        email: email,
-        password: password,
-        data: {'full_name': fullName},
-        emailRedirectTo: 'sca://confirm-email', 
-      );
-      if (authResponse.user == null) throw Exception('Registration failed / فشل التسجيل');
-    } catch (e) {
-      throw Exception('Registration error: $e');
-    }
+    await _supabase.auth.signUp(email: email, password: password, data: {'full_name': fullName});
   }
 
-  Future<void> _updateFcmTokenInBackground(String userId) async {
-    try {
-      if (Firebase.apps.isNotEmpty) {
-        final fcmToken = await FirebaseMessaging.instance.getToken();
-        if (fcmToken != null) {
-          await _supabase.from('profiles').update({'fcm_token': fcmToken}).eq('id', userId);
-        }
-      }
-    } catch (e) {}
+  Future<List<UserModel>> getMyTeamMembers(String leaderId) async {
+    final response = await _supabase.from('profiles').select().eq('leader_id', leaderId);
+    return (response as List).map((json) => UserModel.fromJson(json)).toList();
   }
 
-  Future<void> logout() async {
-    await _supabase.auth.signOut();
-  }
-
-  bool get hasSession => currentUser != null;
-  Stream<AuthState> get authStateChanges => _supabase.auth.onAuthStateChange;
-
-  // --- ADMIN METHODS ---
-
+  Future<void> logout() async => await _supabase.auth.signOut();
+  
   Future<List<UserModel>> getAllUsers() async {
-    try {
-      final response = await _supabase.from('profiles').select().order('created_at', ascending: false);
-      return (response as List).map((json) => UserModel.fromJson(json)).toList();
-    } catch (e) {
-      throw Exception('Failed to fetch users: $e');
-    }
+    final response = await _supabase.from('profiles').select().order('created_at', ascending: false);
+    return (response as List).map((json) => UserModel.fromJson(json)).toList();
   }
 
   Future<void> updateUser(String userId, Map<String, dynamic> data) async {
-    try {
-      await _supabase.from('profiles').update(data).eq('id', userId);
-    } catch (e) {
-      throw Exception('Failed to update user: $e');
-    }
+    await _supabase.from('profiles').update(data).eq('id', userId);
   }
 
   Future<void> deleteUser(String userId) async {
-    try {
-      await _supabase.from('profiles').delete().eq('id', userId);
-    } catch (e) {
-      throw Exception('Failed to delete user: $e');
-    }
-  }
-
-  Future<int> getUsersCount() async {
-    try {
-      final response = await _supabase.from('profiles').select('id');
-      return (response as List).length;
-    } catch (e) {
-      return 0;
-    }
+    await _supabase.from('profiles').delete().eq(id, userId);
   }
 }

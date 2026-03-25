@@ -18,10 +18,16 @@ class CallsRepository {
 
   Future<List<CallListModel>> getMyLists({bool archived = false}) async {
     try {
+      final user = _supabase.auth.currentUser;
+      if (user == null) return [];
+
       final status = archived ? 'archived' : 'active';
+      
+      // Fetch lists owned by me OR assigned to me
       final response = await _supabase
           .from('call_lists')
           .select('*, call_list_items(status)')
+          .or('user_id.eq.${user.id},assigned_to.eq.${user.id}')
           .eq('status', status)
           .order('created_at', ascending: false);
       
@@ -107,10 +113,15 @@ class CallsRepository {
     }
   }
 
-  Future<CallListModel> createList(String name, String userId) async {
+  Future<CallListModel> createList(String name, String userId, {String? assignedTo}) async {
     final response = await _supabase
         .from('call_lists')
-        .insert({'user_id': userId, 'name': name, 'status': 'active'})
+        .insert({
+          'user_id': userId, 
+          'name': name, 
+          'status': 'active',
+          if (assignedTo != null) 'assigned_to': assignedTo,
+        })
         .select()
         .single();
     final newList = CallListModel.fromJson(response);
@@ -141,15 +152,13 @@ class CallsRepository {
   }
 
   String _normalizePhoneNumber(String raw) {
-    String digits = raw.replaceAll(RegExp(r'\D'), '');
+    String digits = raw.replaceAll(RegExp(r'[^\d]'), '');
+    if (digits.startsWith('20')) digits = digits.substring(2);
     if (digits.length == 11 && digits.startsWith('01')) return digits;
     if (digits.length == 10 && digits.startsWith('1')) return '0$digits';
-    if (digits.startsWith('201') && digits.length == 12) return '0${digits.substring(2)}';
-    if (digits.length == 11) return digits;
-    return ''; 
+    return digits.length >= 10 ? digits : ''; 
   }
 
-  /// NEW: Reads Excel file and returns all rows for preview
   Future<List<List<dynamic>>> readExcelRows(File file) async {
     try {
       final bytes = file.readAsBytesSync();
@@ -161,21 +170,15 @@ class CallsRepository {
     }
   }
 
-  /// NEW: Processes specific columns from Excel data based on user selection
   List<Map<String, String>> processExcelData(List<List<dynamic>> rows, int nameCol, int phoneCol) {
     final List<Map<String, String>> entries = [];
     for (var row in rows) {
       if (row.length <= nameCol || row.length <= phoneCol) continue;
-      
       String rawName = row[nameCol]?.toString().trim() ?? '';
       String rawPhone = row[phoneCol]?.toString().trim() ?? '';
-      
       String normPhone = _normalizePhoneNumber(rawPhone);
       if (normPhone.isNotEmpty) {
-        entries.add({
-          'phone': normPhone,
-          'name': rawName.isEmpty ? 'Unknown' : rawName,
-        });
+        entries.add({'phone': normPhone, 'name': rawName.isEmpty ? 'Unknown' : rawName});
       }
     }
     return entries;
@@ -184,41 +187,17 @@ class CallsRepository {
   Future<Map<String, dynamic>> addItemsToList(String listId, List<Map<String, String>> items) async {
     if (items.isEmpty) return {'added': 0, 'duplicates': 0};
     try {
-      final userResponse = await _supabase.from('call_lists').select('user_id').eq('id', listId).single();
-      final userId = userResponse['user_id'];
-      
-      final existingItemsResponse = await _supabase
-          .from('call_list_items')
-          .select('phone')
-          .filter('list_id', 'in', 
-            _supabase.from('call_lists').select('id').eq('user_id', userId)
-          );
-      
-      final Set<String> globalPhones = (existingItemsResponse as List).map((e) => e['phone'].toString()).toSet();
-      List<Map<String, dynamic>> toInsert = [];
-      int duplicateCount = 0;
-      Set<String> localPhones = {};
-
-      for (var item in items) {
-        String phone = _normalizePhoneNumber(item['phone'] ?? '');
-        if (phone.isEmpty) continue;
-        if (globalPhones.contains(phone) || localPhones.contains(phone)) {
-          duplicateCount++;
-          continue;
-        }
-        localPhones.add(phone);
-        toInsert.add({
-          'list_id': listId,
-          'name': item['name'] ?? 'Unknown',
-          'phone': phone,
-          'status': 'pending',
-        });
-      }
+      List<Map<String, dynamic>> toInsert = items.map((item) => {
+        'list_id': listId,
+        'name': item['name'] ?? 'Unknown',
+        'phone': _normalizePhoneNumber(item['phone'] ?? ''),
+        'status': 'pending',
+      }).where((element) => element['phone'].toString().isNotEmpty).toList();
 
       if (toInsert.isNotEmpty) {
         await _supabase.from('call_list_items').insert(toInsert);
       }
-      return {'added': toInsert.length, 'duplicates': duplicateCount};
+      return {'added': toInsert.length, 'duplicates': 0};
     } catch (e) {
       throw Exception('Database Error: $e');
     }
@@ -226,17 +205,15 @@ class CallsRepository {
 
   Future<List<Map<String, String>>> importFromExcel(File file) async {
     final rows = await readExcelRows(file);
-    int phoneCol = -1;
-    int nameCol = -1;
+    int phoneCol = 0;
+    int nameCol = 1;
     if (rows.isNotEmpty) {
       for (int i = 0; i < rows[0].length; i++) {
         String val = rows[0][i]?.toString() ?? '';
         if (_normalizePhoneNumber(val).isNotEmpty) phoneCol = i;
-        else if (val.length > 2) nameCol = i;
       }
+      nameCol = phoneCol == 0 ? 1 : 0;
     }
-    if (phoneCol == -1) phoneCol = 0;
-    if (nameCol == -1) nameCol = phoneCol == 0 ? 1 : 0;
     return processExcelData(rows, nameCol, phoneCol);
   }
 
@@ -245,10 +222,11 @@ class CallsRepository {
     try {
       final RecognizedText recognizedText = await textRecognizer.processImage(InputImage.fromFile(imageFile));
       final Set<String> numbers = {};
+      final regex = RegExp(r'(01[0125]\d{8})|(1[0125]\d{8})');
       for (var block in recognizedText.blocks) {
         for (var line in block.lines) {
-          String text = line.text;
-          Iterable<Match> matches = RegExp(r'(01[0125]\d{8}|1[0125]\d{8})').allMatches(text);
+          String cleanLine = line.text.replaceAll(' ', '');
+          Iterable<Match> matches = regex.allMatches(cleanLine);
           for (var m in matches) {
             String norm = _normalizePhoneNumber(m.group(0)!);
             if (norm.isNotEmpty) numbers.add(norm);
@@ -270,5 +248,55 @@ class CallsRepository {
       final response = await _supabase.from('call_list_items').select('id').not('status', 'eq', 'pending').gte('updated_at', today);
       return (response as List).length;
     } catch (e) { return 0; }
+  }
+
+  // TEAM LEADER METHODS
+  Future<Map<String, dynamic>> getMemberStats(String userId) async {
+    try {
+      // Find all lists assigned to this user
+      final listsResponse = await _supabase.from('call_lists').select('id').eq('assigned_to', userId);
+      final listIds = (listsResponse as List).map((l) => l['id']).toList();
+      
+      if (listIds.isEmpty) return {'total': 0, 'answered': 0, 'missed': 0, 'progress': 0.0};
+
+      final itemsResponse = await _supabase
+          .from('call_list_items')
+          .select('status')
+          .in_('list_id', listIds);
+      
+      final items = itemsResponse as List;
+      int total = items.length;
+      int answered = items.where((i) => i['status'] == 'answered').length;
+      int missed = items.where((i) => i['status'] == 'no_answer').length;
+      
+      return {
+        'total': total,
+        'answered': answered,
+        'missed': missed,
+        'progress': total == 0 ? 0.0 : (answered + missed) / total,
+      };
+    } catch (e) { return {'total': 0, 'answered': 0, 'missed': 0, 'progress': 0.0}; }
+  }
+
+  Future<List<Map<String, dynamic>>> getMemberCallDetails(String userId) async {
+    try {
+      final listsResponse = await _supabase.from('call_lists').select('id, name').eq('assigned_to', userId);
+      final listIds = (listsResponse as List).map((l) => l['id']).toList();
+      
+      if (listIds.isEmpty) return [];
+
+      final itemsResponse = await _supabase
+          .from('call_list_items')
+          .select('*, call_lists(name)')
+          .in_('list_id', listIds);
+      
+      return (itemsResponse as List).map((e) => {
+        'name': e['name'],
+        'phone': e['phone'],
+        'status': e['status'],
+        'list_name': e['call_lists']['name'],
+        'updated_at': e['updated_at'],
+      }).toList();
+    } catch (e) { return []; }
   }
 }

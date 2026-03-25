@@ -17,7 +17,7 @@ class CallListsScreen extends StatefulWidget {
   State<CallListsScreen> createState() => _CallListsScreenState();
 }
 
-class _CallListsScreenState extends State<CallListsScreen> with SingleTickerProviderStateMixin {
+class _CallListsScreenState extends State<CallListsScreen> {
   final CallsRepository _repository = CallsRepository();
 
   @override
@@ -28,279 +28,31 @@ class _CallListsScreenState extends State<CallListsScreen> with SingleTickerProv
     });
   }
 
-  void _showImportSummary(BuildContext context, Map<String, dynamic> summary) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        title: const Row(
-          children: [
-            Icon(Icons.auto_awesome_rounded, color: Color(0xFF10B981)),
-            SizedBox(width: 12),
-            Text('Import Complete', style: TextStyle(fontWeight: FontWeight.bold)),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('List: ${summary['listName']}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.grey)),
-            const SizedBox(height: 16),
-            _buildSummaryRow(Icons.person_add_alt_1_rounded, 'New Contacts Added:', '${summary['added']}', Colors.green),
-            const SizedBox(height: 12),
-            _buildSummaryRow(Icons.copy_rounded, 'Duplicates Skipped:', '${summary['duplicates']}', Colors.orange),
-            const Divider(height: 32),
-            Text('Total processed: ${summary['total']}', style: const TextStyle(fontSize: 11, fontStyle: FontStyle.italic)),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              context.read<CallsProvider>().clearSummary();
-            },
-            child: const Text('GOT IT'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSummaryRow(IconData icon, String label, String value, Color color) {
-    return Row(
-      children: [
-        Icon(icon, size: 18, color: color),
-        const SizedBox(width: 12),
-        Expanded(child: Text(label, style: const TextStyle(fontSize: 14))),
-        Text(value, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: color)),
-      ],
-    );
-  }
-
-  Future<void> _showOCRPreview(List<String> foundNumbers, String userId) async {
-    List<String> numbers = List.from(foundNumbers);
-    final listNameController = TextEditingController(
-      text: 'Image OCR: ${DateTime.now().hour}:${DateTime.now().minute.toString().padLeft(2, '0')}'
-    );
-    
-    await showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-          title: const Text('Review OCR / مراجعة الأرقام', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-          content: SizedBox(
-            width: double.maxFinite,
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextField(
-                    controller: listNameController,
-                    decoration: InputDecoration(
-                      labelText: 'List Name / اسم القائمة',
-                      prefixIcon: const Icon(Icons.edit_rounded, size: 20),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Text('We found ${numbers.length} numbers.', style: const TextStyle(fontSize: 13, color: Colors.grey)),
-                  const SizedBox(height: 8),
-                  ConstrainedBox(
-                    constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.35),
-                    child: ListView.builder(
-                      shrinkWrap: true,
-                      itemCount: numbers.length,
-                      itemBuilder: (c, i) => Card(
-                        child: ListTile(
-                          dense: true,
-                          title: Text(numbers[i], style: const TextStyle(fontWeight: FontWeight.bold)),
-                          trailing: IconButton(
-                            icon: const Icon(Icons.remove_circle_outline, color: Colors.redAccent),
-                            onPressed: () => setDialogState(() => numbers.removeAt(i)),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('CANCEL')),
-            ElevatedButton(
-              onPressed: numbers.isEmpty ? null : () async {
-                final name = listNameController.text.trim();
-                if (name.isEmpty) return;
-                
-                final provider = context.read<CallsProvider>();
-                Navigator.pop(ctx);
-                
-                try {
-                  final newList = await _repository.createList(name, userId);
-                  final itemsToInsert = numbers.map((p) => {'name': 'Extracted', 'phone': p}).toList();
-                  final result = await _repository.addItemsToList(newList.id, itemsToInsert);
-                  
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Success! Added ${result['added']} contacts.')));
-                    provider.loadLists();
-                  }
-                } catch (e) {
-                  if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
-                }
-              },
-              child: const Text('SAVE LIST'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Future<void> _showExcelImportPreview(List<List<dynamic>> rows, String fileName, String userId) async {
-    int nameCol = 0;
-    int phoneCol = 0;
-    final listNameController = TextEditingController(text: 'Excel: $fileName');
-    
-    if (rows.isNotEmpty) {
-      for (int i = 0; i < rows[0].length; i++) {
-        String val = rows[0][i]?.toString() ?? '';
-        if (RegExp(r'\d{8,}').hasMatch(val)) {
-          phoneCol = i;
-          break;
-        }
-      }
-      nameCol = phoneCol == 0 ? 1 : 0;
-    }
-
-    await showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-          title: const Text('Excel Import / استيراد إكسيل', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: listNameController,
-                  decoration: InputDecoration(
-                    labelText: 'List Name / اسم القائمة',
-                    prefixIcon: const Icon(Icons.edit_rounded, size: 20),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                ),
-                const SizedBox(height: 20),
-                _buildColumnSelector('Name Column / عمود الاسم', nameCol, rows[0], (val) => setDialogState(() => nameCol = val!)),
-                const SizedBox(height: 12),
-                _buildColumnSelector('Phone Column / عمود الرقم', phoneCol, rows[0], (val) => setDialogState(() => phoneCol = val!)),
-                const Divider(height: 32),
-                const Text('Preview:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
-                const SizedBox(height: 8),
-                Container(
-                  decoration: BoxDecoration(color: Colors.grey.withOpacity(0.05), borderRadius: BorderRadius.circular(12)),
-                  padding: const EdgeInsets.all(8),
-                  child: Column(
-                    children: rows.take(3).map((row) => Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 2),
-                      child: Row(
-                        children: [
-                          Expanded(child: Text(row.length > nameCol ? row[nameCol].toString() : '-', style: const TextStyle(fontSize: 11))),
-                          const SizedBox(width: 8),
-                          Expanded(child: Text(row.length > phoneCol ? row[phoneCol].toString() : '-', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold))),
-                        ],
-                      ),
-                    )).toList(),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('CANCEL')),
-            ElevatedButton(
-              onPressed: () async {
-                final name = listNameController.text.trim();
-                if (name.isEmpty) return;
-                
-                final provider = context.read<CallsProvider>();
-                Navigator.pop(ctx);
-
-                try {
-                  final dataRows = rows.length > 1 ? rows.sublist(1) : rows;
-                  final processed = _repository.processExcelData(dataRows, nameCol, phoneCol);
-                  
-                  if (processed.isNotEmpty) {
-                    final newList = await _repository.createList(name, userId);
-                    final result = await _repository.addItemsToList(newList.id, processed);
-                    if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Created "$name" with ${result['added']} contacts.')));
-                      provider.loadLists();
-                    }
-                  } else {
-                    if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No valid numbers found!')));
-                  }
-                } catch (e) {
-                  if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
-                }
-              },
-              child: const Text('IMPORT NOW'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildColumnSelector(String label, int current, List<dynamic> headers, ValueChanged<int?> onChanged) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 4),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          decoration: BoxDecoration(border: Border.all(color: Colors.grey.withOpacity(0.3)), borderRadius: BorderRadius.circular(12)),
-          child: DropdownButtonHideUnderline(
-            child: DropdownButton<int>(
-              value: current,
-              isExpanded: true,
-              items: List.generate(headers.length, (index) => DropdownMenuItem(
-                value: index,
-                child: Text('Col ${index + 1}: ${headers[index].toString().substring(0, headers[index].toString().length > 15 ? 15 : headers[index].toString().length)}', style: const TextStyle(fontSize: 13)),
-              )),
-              onChanged: onChanged,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
+  // Helper to get current User ID safely
+  String _getUserId() => context.read<AuthProvider>().currentUser?.id ?? '';
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final callsProvider = context.watch<CallsProvider>();
-    final authProvider = context.read<AuthProvider>();
-    final userId = authProvider.currentUser?.id ?? '';
+    final userId = _getUserId();
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Call Management', style: TextStyle(fontWeight: FontWeight.bold)),
         actions: [
-          IconButton(icon: const Icon(Icons.refresh_rounded), onPressed: () => callsProvider.loadLists()),
+          IconButton(
+            icon: const Icon(Icons.refresh_rounded), 
+            onPressed: () => callsProvider.loadLists()
+          ),
         ],
       ),
       body: callsProvider.isLoading 
           ? const Center(child: CircularProgressIndicator())
-          : _buildListContent(callsProvider, theme),
+          : _buildListContent(callsProvider, theme, userId),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showCreateListDialog(context, userId),
-        label: const Text('New List'),
+        onPressed: () => _showAddOptions(context, userId),
+        label: const Text('Add Contacts'),
         icon: const Icon(Icons.add_rounded),
         backgroundColor: theme.colorScheme.primary,
         foregroundColor: Colors.white,
@@ -308,22 +60,92 @@ class _CallListsScreenState extends State<CallListsScreen> with SingleTickerProv
     );
   }
 
-  Widget _buildListContent(CallsProvider provider, ThemeData theme) {
+  void _showAddOptions(BuildContext context, String userId) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Add New Contacts', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 24),
+            _buildActionOption(
+              icon: Icons.edit_note_rounded,
+              title: 'Create Manual List',
+              subtitle: 'Type name and start adding numbers',
+              color: Colors.blue,
+              onTap: () {
+                Navigator.pop(ctx);
+                _showCreateListDialog(context, userId);
+              },
+            ),
+            const SizedBox(height: 12),
+            _buildActionOption(
+              icon: Icons.upload_file_rounded,
+              title: 'Import from Excel',
+              subtitle: 'Support .xlsx and .xls files',
+              color: Colors.green,
+              onTap: () {
+                Navigator.pop(ctx);
+                _handleImport(false, userId);
+              },
+            ),
+            const SizedBox(height: 12),
+            _buildActionOption(
+              icon: Icons.camera_alt_rounded,
+              title: 'Scan from Image (OCR)',
+              subtitle: 'Extract numbers from photos',
+              color: Colors.orange,
+              onTap: () {
+                Navigator.pop(ctx);
+                _handleImport(true, userId);
+              },
+            ),
+            const SizedBox(height: 16),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActionOption({required IconData icon, required String title, required String subtitle, required Color color, required VoidCallback onTap}) {
+    return ListTile(
+      onTap: onTap,
+      leading: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(color: color.withOpacity(0.1), shape: BoxShape.circle),
+        child: Icon(icon, color: color),
+      ),
+      title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+      subtitle: Text(subtitle, style: const TextStyle(fontSize: 12)),
+      trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14),
+    );
+  }
+
+  Widget _buildListContent(CallsProvider provider, ThemeData theme, String userId) {
     if (provider.lists.isEmpty) {
       return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.contact_phone_outlined, size: 80, color: theme.colorScheme.primary.withOpacity(0.2)),
-            const SizedBox(height: 16),
-            const Text('No call lists yet', style: TextStyle(fontSize: 18, color: Colors.grey)),
-            const SizedBox(height: 24),
-            ElevatedButton.icon(
-              onPressed: () => _showCreateListDialog(context, provider.lists.firstOrNull?.userId ?? ''), 
-              icon: const Icon(Icons.add),
-              label: const Text('Create your first list'),
-            )
-          ],
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              FadeInDown(child: Icon(Icons.contact_phone_outlined, size: 80, color: theme.colorScheme.primary.withOpacity(0.2))),
+              const SizedBox(height: 24),
+              const Text('No call lists yet / لا توجد قوائم', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.grey)),
+              const SizedBox(height: 12),
+              const Text('Start by creating a manual list or importing contacts from Excel/Images.', textAlign: TextAlign.center, style: TextStyle(color: Colors.blueGrey)),
+              const SizedBox(height: 32),
+              ElevatedButton.icon(
+                onPressed: () => _showAddOptions(context, userId), 
+                icon: const Icon(Icons.add),
+                label: const Text('Create your first list'),
+                style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12)),
+              )
+            ],
+          ),
         ),
       );
     }
@@ -396,7 +218,7 @@ class _CallListsScreenState extends State<CallListsScreen> with SingleTickerProv
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text('${(list.progress * 100).toInt()}% Completed', style: TextStyle(fontSize: 12, color: theme.colorScheme.secondary, fontWeight: FontWeight.bold)),
-                  _buildImportButtons(list.id, provider.lists.isEmpty ? '' : provider.lists.first.userId),
+                  const Icon(Icons.arrow_forward_rounded, size: 16, color: Colors.grey),
                 ],
               )
             ],
@@ -406,24 +228,12 @@ class _CallListsScreenState extends State<CallListsScreen> with SingleTickerProv
     );
   }
 
-  Widget _buildImportButtons(String listId, String userId) {
-    return Row(
-      children: [
-        IconButton(
-          icon: const Icon(Icons.camera_alt_rounded, size: 20, color: Colors.blueGrey),
-          onPressed: () => _handleImport(true, userId),
-          tooltip: 'OCR from Image',
-        ),
-        IconButton(
-          icon: const Icon(Icons.upload_file_rounded, size: 20, color: Colors.blueGrey),
-          onPressed: () => _handleImport(false, userId),
-          tooltip: 'Import Excel',
-        ),
-      ],
-    );
-  }
-
   Future<void> _handleImport(bool isImage, String userId) async {
+    if (userId.isEmpty) {
+       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Error: User session expired. Please login again.')));
+       return;
+    }
+
     if (isImage) {
       final picker = ImagePicker();
       final img = await picker.pickImage(source: ImageSource.gallery);
@@ -462,10 +272,9 @@ class _CallListsScreenState extends State<CallListsScreen> with SingleTickerProv
           ElevatedButton(
             onPressed: () async {
               if (controller.text.isNotEmpty) {
-                await _repository.createList(controller.text, userId);
-                if (mounted) {
+                final success = await context.read<CallsProvider>().createList(controller.text, userId);
+                if (mounted && success) {
                   Navigator.pop(ctx);
-                  context.read<CallsProvider>().loadLists();
                 }
               }
             },
@@ -476,21 +285,191 @@ class _CallListsScreenState extends State<CallListsScreen> with SingleTickerProv
     );
   }
 
+  // ... (keeping _showOCRPreview and _showExcelImportPreview for brevity, ensuring they use userId passed from _handleImport)
+  
+  Future<void> _showOCRPreview(List<String> foundNumbers, String userId) async {
+    List<String> numbers = List.from(foundNumbers);
+    final listNameController = TextEditingController(
+      text: 'Image OCR: ${DateTime.now().hour}:${DateTime.now().minute.toString().padLeft(2, '0')}'
+    );
+    
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          title: const Text('Review OCR / مراجعة الأرقام', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: listNameController,
+                    decoration: InputDecoration(
+                      labelText: 'List Name / اسم القائمة',
+                      prefixIcon: const Icon(Icons.edit_rounded, size: 20),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text('We found ${numbers.length} numbers.', style: const TextStyle(fontSize: 13, color: Colors.grey)),
+                  const SizedBox(height: 8),
+                  ConstrainedBox(
+                    constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.35),
+                    child: ListView.builder(
+                      shrinkWrap: true,
+                      itemCount: numbers.length,
+                      itemBuilder: (c, i) => Card(
+                        child: ListTile(
+                          dense: true,
+                          title: Text(numbers[i], style: const TextStyle(fontWeight: FontWeight.bold)),
+                          trailing: IconButton(
+                            icon: const Icon(Icons.remove_circle_outline, color: Colors.redAccent),
+                            onPressed: () => setDialogState(() => numbers.removeAt(i)),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('CANCEL')),
+            ElevatedButton(
+              onPressed: numbers.isEmpty ? null : () async {
+                final name = listNameController.text.trim();
+                if (name.isEmpty) return;
+                final provider = context.read<CallsProvider>();
+                Navigator.pop(ctx);
+                try {
+                  final newList = await _repository.createList(name, userId);
+                  final itemsToInsert = numbers.map((p) => {'name': 'Extracted', 'phone': p}).toList();
+                  final result = await _repository.addItemsToList(newList.id, itemsToInsert);
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Success! Added ${result['added']} contacts.')));
+                    provider.loadLists();
+                  }
+                } catch (e) {
+                  if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+                }
+              },
+              child: const Text('SAVE LIST'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showExcelImportPreview(List<List<dynamic>> rows, String fileName, String userId) async {
+    int nameCol = 0;
+    int phoneCol = 0;
+    final listNameController = TextEditingController(text: 'Excel: $fileName');
+    if (rows.isNotEmpty) {
+      for (int i = 0; i < rows[0].length; i++) {
+        String val = rows[0][i]?.toString() ?? '';
+        if (RegExp(r'\d{8,}').hasMatch(val)) {
+          phoneCol = i; break;
+        }
+      }
+      nameCol = phoneCol == 0 ? 1 : 0;
+    }
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          title: const Text('Excel Import / استيراد إكسيل', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: listNameController,
+                  decoration: InputDecoration(
+                    labelText: 'List Name / اسم القائمة',
+                    prefixIcon: const Icon(Icons.edit_rounded, size: 20),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                _buildColumnSelector('Name Column', nameCol, rows[0], (val) => setDialogState(() => nameCol = val!)),
+                const SizedBox(height: 12),
+                _buildColumnSelector('Phone Column', phoneCol, rows[0], (val) => setDialogState(() => phoneCol = val!)),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('CANCEL')),
+            ElevatedButton(
+              onPressed: () async {
+                final name = listNameController.text.trim();
+                if (name.isEmpty) return;
+                final provider = context.read<CallsProvider>();
+                Navigator.pop(ctx);
+                try {
+                  final dataRows = rows.length > 1 ? rows.sublist(1) : rows;
+                  final processed = _repository.processExcelData(dataRows, nameCol, phoneCol);
+                  if (processed.isNotEmpty) {
+                    final newList = await _repository.createList(name, userId);
+                    final result = await _repository.addItemsToList(newList.id, processed);
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Created "$name" with ${result['added']} contacts.')));
+                      provider.loadLists();
+                    }
+                  }
+                } catch (e) {
+                  if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+                }
+              },
+              child: const Text('IMPORT NOW'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildColumnSelector(String label, int current, List<dynamic> headers, ValueChanged<int?> onChanged) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 4),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          decoration: BoxDecoration(border: Border.all(color: Colors.grey.withOpacity(0.3)), borderRadius: BorderRadius.circular(12)),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<int>(
+              value: current,
+              isExpanded: true,
+              items: List.generate(headers.length, (index) => DropdownMenuItem(
+                value: index,
+                child: Text('Col ${index + 1}: ${headers[index].toString()}', style: const TextStyle(fontSize: 13), overflow: TextOverflow.ellipsis),
+              )),
+              onChanged: onChanged,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   void _confirmDelete(CallListModel list, CallsProvider provider) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Delete List?'),
-        content: Text('Are you sure you want to delete "${list.name}"? This action cannot be undone.'),
+        content: Text('Are you sure you want to delete "${list.name}"?'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-          TextButton(
-            onPressed: () {
-              provider.deleteList(list.id);
-              Navigator.pop(ctx);
-            },
-            child: const Text('Delete', style: TextStyle(color: Colors.red)),
-          ),
+          TextButton(onPressed: () { provider.deleteList(list.id); Navigator.pop(ctx); }, child: const Text('Delete', style: TextStyle(color: Colors.red))),
         ],
       ),
     );

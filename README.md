@@ -1,65 +1,33 @@
-# 🚀 SCA - Smart Call Assistant
+# Smart Call Assistant (SCA) 🚀
 
-**SCA (Smart Call Assistant)** is a high-performance productivity tool designed for sales professionals and call organizers. It streamlines the process of managing call lists, tracking outcomes, and boosting conversion rates through smart integrations.
+تطبيق احترافي لإدارة فرق المبيعات والمكالمات، يسهل على المناديب تنفيذ مهامهم اليومية ويتيح للتيم ليدر السيطرة الكاملة على الأداء.
 
----
+## 🌟 الميزات الجديدة (التحديث الأخير)
 
-## ✨ Key Features
+### 👔 نظام التيم ليدر (Team Management)
+- **هوية SCA ID:** كود فريد لكل مستخدم لسهولة الربط والتعريف.
+- **إدارة الفريق:** يمكن لليدر إضافة المناديب لفريقه باستخدام الـ ID فقط.
+- **إسناد المهام (Assign Tasks):** رفع ملفات Excel وإرسالها مباشرة لمندوب محدد ليبدأ العمل عليها.
+- **الهدف الشهري (Monthly Target):** تحديد تارجت مكالمات لكل مندوب ومتابعة نسبة الإنجاز بشكل مرئي (Progress Bar).
+- **الرسائل الجماعية (Broadcast):** إرسال تعليمات فورية لكافة أعضاء الفريق في لحظة واحدة.
+- **تقارير فردية:** سحب ملف Excel شامل لإنجاز أي مندوب بشكل منفرد.
 
-- 📸 **AI-Powered OCR:** Extract phone numbers directly from images using Google ML Kit.
-- 📊 **Excel Integration:** Seamlessly import call lists from `.xlsx` and `.xls` files.
-- 💬 **One-Click WhatsApp:** Start chats with customers instantly without saving their numbers.
-- 📈 **Performance Insights:** Real-time dashboards with success rate tracking and detailed reports.
-- 🔔 **Smart Notifications:** Foreground and background push notifications via Firebase (FCM).
-- ☁️ **Cloud Backend:** Powered by **Supabase** for real-time data sync and secure authentication.
-- 🎨 **Psychology-Based UI:** Professional theme (Deep Navy & Emerald) optimized for focus and achievement.
+### 🔍 تقنية الـ OCR المتطورة
+- استخراج أرقام الهواتف من الصور بدقة عالية.
+- تحسين ذكي للنصوص لإزالة الرموز والمسافات الزائدة لضمان صحة الأرقام المصرية (010, 011, 012, 015).
 
----
+### 📈 التقارير والبيانات
+- مزامنة سحابية مع Supabase.
+- دعم العمل بدون إنترنت (Offline Mode) مع مزامنة تلقائية عند العودة.
+- تصدير كافة البيانات والتقارير بصيغة Excel.
 
-## 🛠 Tech Stack
+## 🛠️ المتطلبات التقنية
+- Flutter SDK
+- Supabase Backend
+- Firebase Messaging (Notifications)
+- Google ML Kit (OCR)
 
-- **Framework:** [Flutter](https://flutter.dev) (Dart)
-- **Backend:** [Supabase](https://supabase.com) (Database, Auth, Storage)
-- **Push Notifications:** [Firebase Cloud Messaging](https://firebase.google.com/docs/cloud-messaging)
-- **Local Storage:** Shared Preferences
-- **Navigation:** GoRouter
-- **State Management:** Provider
-- **Charts:** FL Chart
-- **OCR:** Google ML Kit Text Recognition
-
----
-
-## 🎨 Design Philosophy
-
-The application uses a custom-built theme designed based on **Color Psychology**:
-- **Deep Navy:** For professional trust and deep focus.
-- **Emerald Green:** For a sense of achievement and growth.
-- **Soft UI:** Rounded corners and subtle shadows to reduce eye strain during long working hours.
-
----
-
-## 🚀 Getting Started
-
-1. **Clone the Repo:**
-   ```bash
-   git clone https://github.com/your-username/SCA.git
-   ```
-2. **Install Dependencies:**
-   ```bash
-   flutter pub get
-   ```
-3. **Configure Supabase & Firebase:**
-   - Add your `google-services.json` and `GoogleService-Info.plist`.
-   - Setup Supabase keys in `lib/core/config/supabase_config.dart`.
-4. **Run the App:**
-   ```bash
-   flutter run
-   ```
-
----
-
-## 📄 License
-This project is for internal use. All rights reserved.
-
----
-Developed with ❤️ to empower sales teams.
+## 📱 طريقة الاستخدام للمديرين
+1. تعيين رتبة `team_leader` للمستخدم من لوحة تحكم الأدمن.
+2. الدخول لتبويب "Team" ومشاركة الـ ID مع المناديب.
+3. رفع ملفات العمل وإسنادها للأعضاء من داخل "Member Details".

@@ -65,7 +65,8 @@ dependencies:
   firebase_core: ^3.10.1
   firebase_messaging: ^15.2.1
   flutter_local_notifications: ^18.0.1
-  firebase_analytics: ^11.3.3 # Added for tracking
+  firebase_analytics: ^11.3.3
+  googleapis_auth: ^1.4.1 # Added for FCM V1
 
   share_plus: ^10.1.4
 

@@ -22,11 +22,17 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   String? _selectedPlan;
   File? _proofImage;
 
-  static const double priceMonthly = 100.0;
-  static const double priceQuarterly = 250.0;
+  // Prices and Plans
+  static const Map<String, double> prices = {
+    'sales_monthly': 100.0,
+    'sales_quarterly': 250.0,
+    'leader_monthly': 200.0,
+    'leader_quarterly': 500.0,
+  };
+
   static const String vodafoneCash = '01080305645';
   static const String instapay = '01550381486';
-  static const String adminWhatsapp = '201550381486'; // Updated with your provided number
+  static const String adminWhatsapp = '201550381486';
 
   Future<void> _contactSupport() async {
     final message = Uri.encodeComponent("Hello SCA Support, I have a question regarding my subscription.");
@@ -45,9 +51,12 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   }
 
   Future<void> _submitRequest(UserModel user) async {
+    if (_selectedPlan == null || _proofImage == null) return;
+    
     setState(() => _isLoading = true);
     try {
-      double amount = _selectedPlan == 'monthly' ? priceMonthly : priceQuarterly;
+      double amount = prices[_selectedPlan] ?? 0.0;
+      // Plan type format: "sales_monthly", "leader_quarterly" etc.
       await _repository.createSubscriptionRequest(
         userId: user.id,
         planType: _selectedPlan!,
@@ -77,7 +86,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Subscription / الاشتراك', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text('Plans & Subscription / الباقات والاشتراك', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
         centerTitle: true,
       ),
       body: SingleChildScrollView(
@@ -90,12 +99,19 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
             _buildSupportButton(theme),
             const SizedBox(height: 32),
             if (!isPending) ...[
-              Text(isActive ? 'Upgrade Plan / ترقية الاشتراك' : 'Choose a Plan / اختر الباقة', 
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-              const SizedBox(height: 16),
-              if (!isActive) _buildPlanTile('Monthly / شهر', '100 EGP', 'monthly'),
-              if (!isActive) const SizedBox(height: 12),
-              _buildPlanTile('3 Months / ٣ شهور', '250 EGP', 'quarterly', isUpgrade: isActive),
+              const Text('Standard Sales Plans / باقات المناديب', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.blueGrey)),
+              const SizedBox(height: 12),
+              _buildPlanTile('Sales: 1 Month / شهر مندوب', '100 EGP', 'sales_monthly'),
+              const SizedBox(height: 8),
+              _buildPlanTile('Sales: 3 Months / ٣ شهور مندوب', '250 EGP', 'sales_quarterly'),
+              
+              const SizedBox(height: 24),
+              const Text('Team Leader Plans / باقات تيم ليدر', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.indigo)),
+              const SizedBox(height: 12),
+              _buildPlanTile('Leader: 1 Month / شهر ليدر', '200 EGP', 'leader_monthly', color: Colors.indigo),
+              const SizedBox(height: 8),
+              _buildPlanTile('Leader: 3 Months / ٣ شهور ليدر', '500 EGP', 'leader_quarterly', color: Colors.indigo),
+
               const SizedBox(height: 24),
               _buildPaymentInfoCard(),
               const SizedBox(height: 24),
@@ -217,6 +233,10 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
               Text(statusText, style: const TextStyle(fontWeight: FontWeight.bold)),
             ],
           ),
+          if (isActive) ...[
+            const SizedBox(height: 8),
+            Text('Current Role: ${user?.role.toUpperCase()}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+          ],
           if (isRejected && user?.subscriptionRejectReason != null) ...[
             const SizedBox(height: 12),
             Container(
@@ -257,9 +277,11 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     );
   }
 
-  Widget _buildPlanTile(String title, String price, String value, {bool isUpgrade = false}) {
+  Widget _buildPlanTile(String title, String price, String value, {Color? color}) {
     final isSelected = _selectedPlan == value;
     final theme = Theme.of(context);
+    final borderColor = isSelected ? (color ?? theme.colorScheme.secondary) : Colors.grey.withOpacity(0.1);
+
     return InkWell(
       onTap: () => setState(() => _selectedPlan = value),
       child: Container(
@@ -267,15 +289,15 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
         decoration: BoxDecoration(
           color: theme.cardTheme.color, 
           borderRadius: BorderRadius.circular(16), 
-          border: Border.all(color: isSelected ? theme.colorScheme.secondary : Colors.grey.withOpacity(0.1), width: 2)
+          border: Border.all(color: borderColor, width: isSelected ? 2.5 : 1)
         ),
         child: Row(
           children: [
-            Icon(isSelected ? Icons.check_circle : Icons.circle_outlined, color: isSelected ? theme.colorScheme.secondary : Colors.grey),
+            Icon(isSelected ? Icons.check_circle : Icons.circle_outlined, color: borderColor),
             const SizedBox(width: 16),
             Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(isUpgrade ? 'UPGRADE: $title' : title, style: const TextStyle(fontWeight: FontWeight.bold)),
-              Text(price, style: TextStyle(color: theme.colorScheme.secondary, fontWeight: FontWeight.bold)),
+              Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+              Text(price, style: TextStyle(color: color ?? theme.colorScheme.secondary, fontWeight: FontWeight.bold)),
             ]),
           ],
         ),

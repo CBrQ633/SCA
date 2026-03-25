@@ -9,8 +9,9 @@ class UserModel {
   final DateTime? subscriptionEnd;
   final DateTime createdAt;
   final String? currentDeviceId;
-  final String? leaderId; // ID of the Team Leader if member
-  final String? scaId;    // Unique Short ID (e.g., SCA-X1Y2Z3)
+  final String? leaderId; 
+  final String? scaId;    
+  final int monthlyTarget; // Added this
 
   UserModel({
     required this.id,
@@ -25,6 +26,7 @@ class UserModel {
     this.currentDeviceId,
     this.leaderId,
     this.scaId,
+    this.monthlyTarget = 0, // Default 0
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
@@ -41,6 +43,7 @@ class UserModel {
       createdAt: DateTime.parse(json['created_at'] as String),
       leaderId: json['leader_id'] as String?,
       scaId: json['sca_id'] as String?,
+      monthlyTarget: json['monthly_target'] as int? ?? 0,
     );
   }
 
@@ -58,6 +61,7 @@ class UserModel {
       'current_device_id': currentDeviceId,
       'leader_id': leaderId,
       'sca_id': scaId,
+      'monthly_target': monthlyTarget,
     };
   }
 

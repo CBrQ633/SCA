@@ -12,7 +12,7 @@ class AdminUserManagementScreen extends StatefulWidget {
 }
 
 class _AdminUserManagementScreenState extends State<AdminUserManagementScreen> {
-  final AuthRepository _roleRepository = AuthRepository();
+  final AuthRepository _authRepo = AuthRepository();
   List<UserModel> _users = [];
   bool _isLoading = true;
 
@@ -25,7 +25,7 @@ class _AdminUserManagementScreenState extends State<AdminUserManagementScreen> {
   Future<void> _loadUsers() async {
     setState(() => _isLoading = true);
     try {
-      final users = await _roleRepository.getAllUsers();
+      final users = await _authRepo.getAllUsers();
       if (mounted) {
         setState(() {
           _users = users;
@@ -41,152 +41,74 @@ class _AdminUserManagementScreenState extends State<AdminUserManagementScreen> {
     }
   }
 
+  Future<void> _updateUserRole(UserModel user, String newRole) async {
+    try {
+      await _authRepo.updateUser(user.id, {'role': newRole});
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('User role updated to ${newRole.toUpperCase()}')),
+        );
+      }
+      _loadUsers();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+    }
+  }
+
   Future<void> _toggleSubscription(UserModel user) async {
-    final newStatus =
-        user.subscriptionStatus == 'active' ? 'inactive' : 'active';
+    final newStatus = user.subscriptionStatus == 'active' ? 'inactive' : 'active';
     try {
       final now = DateTime.now();
-      await _roleRepository.updateUser(user.id, {
+      await _authRepo.updateUser(user.id, {
         'subscription_status': newStatus,
-        'subscription_start':
-            newStatus == 'active' ? now.toIso8601String() : null,
-        'subscription_end': newStatus == 'active'
-            ? now.add(const Duration(days: 30)).toIso8601String()
-            : null,
+        'subscription_start': newStatus == 'active' ? now.toIso8601String() : null,
+        'subscription_end': newStatus == 'active' ? now.add(const Duration(days: 30)).toIso8601String() : null,
       });
       _loadUsers();
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
-      );
-    }
-  }
-
-  Future<void> _toggleRole(UserModel user) async {
-    // Corrected to actually update role if logic requires it,
-    // but the code below simply updates role in `_roleRepository.updateUser`.
-    final newRole = user.role == 'admin' ? 'user' : 'admin';
-    try {
-      await _roleRepository.updateUser(user.id, {'role': newRole});
-      _loadUsers();
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
-      );
-    }
-  }
-
-  Future<void> _deleteUser(UserModel user) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Delete User?'),
-        content: Text(
-            'Are you sure you want to delete ${user.fullName}? This action cannot be undone.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Delete', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed == true) {
-      try {
-        await _roleRepository.deleteUser(user.id);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('User deleted successfully')),
-          );
-        }
-        _loadUsers();
-      } catch (e) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
-        );
-      }
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Manage Users')),
+      appBar: AppBar(title: const Text('User Management / إدارة المستخدمين')),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : _users.isEmpty
-              ? const Center(child: Text('No users found'))
-              : ListView.builder(
+          : ListView.builder(
                   padding: const EdgeInsets.all(16),
                   itemCount: _users.length,
                   itemBuilder: (context, index) {
                     final user = _users[index];
                     return Card(
                       margin: const EdgeInsets.only(bottom: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                       child: ListTile(
-                        title: Text(user.fullName ?? user.email,
-                            style:
-                                const TextStyle(fontWeight: FontWeight.bold)),
+                        title: Text(user.fullName ?? user.email, style: const TextStyle(fontWeight: FontWeight.bold)),
                         subtitle: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('Email: ${user.email}'),
-                            Text('Role: ${user.role.toUpperCase()}'),
-                            Text(
-                                'Status: ${user.subscriptionStatus.toUpperCase()}'),
+                            Text('Role: ${user.role.toUpperCase()}', style: TextStyle(color: user.role == 'team_leader' ? Colors.indigo : Colors.blueGrey, fontWeight: FontWeight.bold)),
+                            Text('Status: ${user.subscriptionStatus.toUpperCase()}'),
                             if (user.subscriptionEnd != null)
-                              Text(
-                                  'Expires: ${DateFormat('yyyy-MM-dd').format(user.subscriptionEnd!)}'),
+                              Text('Expires: ${DateFormat('yyyy-MM-dd').format(user.subscriptionEnd!)}', style: const TextStyle(fontSize: 11)),
                           ],
                         ),
                         trailing: PopupMenuButton<String>(
                           onSelected: (value) {
-                            if (value == 'toggle_sub') {
-                              _toggleSubscription(user);
-                            } else if (value == 'toggle_role') {
-                              _toggleRole(user);
-                            } else if (value == 'delete_user') {
-                              _deleteUser(user);
-                            } else if (value == 'trial_3') {
-                              _giveTrial(user, 3);
-                            } else if (value == 'trial_7') {
-                              _giveTrial(user, 7);
-                            }
+                            if (value == 'set_leader') _updateUserRole(user, 'team_leader');
+                            else if (value == 'set_sales') _updateUserRole(user, 'sales_user');
+                            else if (value == 'toggle_sub') _toggleSubscription(user);
+                            else if (value == 'delete') _deleteUser(user);
                           },
                           itemBuilder: (context) => [
-                            PopupMenuItem(
-                              value: 'toggle_sub',
-                              child: Text(user.subscriptionStatus == 'active'
-                                  ? 'Cancel Subscription'
-                                  : 'Start Subscription'),
-                            ),
-                            PopupMenuItem(
-                              value: 'toggle_role',
-                              child: Text(user.role == 'admin'
-                                  ? 'Revoke Admin'
-                                  : 'Make Admin'),
-                            ),
-                            const PopupMenuItem(
-                              value: 'trial_3',
-                              child: Text('Give 3-Day Trial'),
-                            ),
-                            const PopupMenuItem(
-                              value: 'trial_7',
-                              child: Text('Give 7-Day Trial'),
-                            ),
-                            const PopupMenuItem(
-                              value: 'delete_user',
-                              child: Text('Delete User',
-                                  style: TextStyle(color: Colors.red)),
-                            ),
+                            const PopupMenuItem(value: 'set_leader', child: ListTile(dense: true, leading: Icon(Icons.stars, color: Colors.indigo), title: Text('Make Team Leader'))),
+                            const PopupMenuItem(value: 'set_sales', child: ListTile(dense: true, leading: Icon(Icons.person, color: Colors.blueGrey), title: Text('Make Sales User'))),
+                            PopupMenuItem(value: 'toggle_sub', child: ListTile(dense: true, leading: const Icon(Icons.card_membership), title: Text(user.subscriptionStatus == 'active' ? 'Deactivate' : 'Activate'))),
+                            const PopupMenuItem(value: 'delete', child: ListTile(dense: true, leading: Icon(Icons.delete, color: Colors.red), title: Text('Delete User'))),
                           ],
                         ),
                       ),
@@ -196,26 +118,25 @@ class _AdminUserManagementScreenState extends State<AdminUserManagementScreen> {
     );
   }
 
-  Future<void> _giveTrial(UserModel user, int days) async {
-    try {
-      final now = DateTime.now();
-      await _roleRepository.updateUser(user.id, {
-        'subscription_status': 'active',
-        'subscription_start': now.toIso8601String(),
-        'subscription_end': now.add(Duration(days: days)).toIso8601String(),
-        'trial_used': true,
-      });
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('تم منح $days أيام تجريبية بنجاح')),
-        );
+  Future<void> _deleteUser(UserModel user) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete User?'),
+        content: Text('Are you sure you want to delete ${user.fullName}?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Delete', style: TextStyle(color: Colors.red))),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      try {
+        await _authRepo.deleteUser(user.id);
+        _loadUsers();
+      } catch (e) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
       }
-      _loadUsers();
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
-      );
     }
   }
 }

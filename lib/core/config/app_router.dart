@@ -4,7 +4,7 @@ import 'package:smart_call_assistant/features/auth/presentation/auth_provider.da
 import 'package:smart_call_assistant/features/auth/presentation/screens/login_screen.dart';
 import 'package:smart_call_assistant/features/auth/presentation/screens/register_screen.dart';
 import 'package:smart_call_assistant/features/auth/presentation/screens/email_confirmation_success_screen.dart';
-import 'package:smart_call_assistant/features/auth/presentation/screens/onboarding_screen.dart'; // Added
+import 'package:smart_call_assistant/features/auth/presentation/screens/onboarding_screen.dart'; 
 import 'package:smart_call_assistant/features/calls/presentation/screens/call_lists_screen.dart';
 import 'package:smart_call_assistant/features/calls/presentation/screens/call_list_details_screen.dart';
 import 'package:smart_call_assistant/features/calls/presentation/screens/call_process_screen.dart';
@@ -19,6 +19,8 @@ import 'package:smart_call_assistant/features/admin/presentation/screens/admin_d
 import 'package:smart_call_assistant/features/reports/presentation/screens/reports_screen.dart';
 import 'package:smart_call_assistant/features/about/presentation/screens/about_screen.dart';
 import 'package:smart_call_assistant/features/settings/presentation/screens/how_to_use_screen.dart';
+import 'package:smart_call_assistant/features/team/presentation/screens/team_dashboard_screen.dart';
+import 'package:smart_call_assistant/features/team/presentation/screens/my_tasks_screen.dart'; // Added
 import 'package:smart_call_assistant/core/components/scaffold_with_nav_bar.dart';
 import 'package:smart_call_assistant/core/constants/app_constants.dart';
 
@@ -46,27 +48,21 @@ class AppRouter {
         if (!authProvider.isAdmin) {
           final isActive = authProvider.currentUser?.isSubscriptionActive ?? false;
           final path = state.matchedLocation;
-          
-          // Allow onboarding and sub routes
           final isAllowed = path.startsWith('/subscription') || path.startsWith('/settings') || path.startsWith('/onboarding');
-          
-          // If not active, but just registered, show onboarding
-          if (!isActive && !isAllowed) {
-             return '/onboarding';
-          }
+          if (!isActive && !isAllowed) return '/onboarding';
         }
-
         return null;
       },
       routes: [
         GoRoute(path: AppConstants.routeLogin, builder: (context, state) => const LoginScreen()),
         GoRoute(path: AppConstants.routeRegister, builder: (context, state) => const RegisterScreen()),
         GoRoute(path: '/confirm-email', builder: (context, state) => const EmailConfirmationSuccessScreen()),
-        GoRoute(path: '/onboarding', builder: (context, state) => const OnboardingScreen()), // Added
+        GoRoute(path: '/onboarding', builder: (context, state) => const OnboardingScreen()), 
         
         StatefulShellRoute.indexedStack(
           builder: (context, state, navigationShell) {
             final isAdmin = authProvider.isAdmin;
+            final isLeader = authProvider.isTeamLeader;
             final isActive = authProvider.currentUser?.isSubscriptionActive ?? false;
 
             final List<NavigationDestination> tabs;
@@ -84,25 +80,19 @@ class AppRouter {
                 NavigationDestination(icon: Icon(Icons.tune_outlined), selectedIcon: Icon(Icons.tune_rounded), label: 'Settings'),
               ];
             } else {
-              tabs = const [
-                NavigationDestination(icon: Icon(Icons.quick_contacts_dialer_outlined), selectedIcon: Icon(Icons.quick_contacts_dialer_rounded), label: 'Calls'),
-                NavigationDestination(icon: Icon(Icons.bar_chart_outlined), selectedIcon: Icon(Icons.bar_chart_rounded), label: 'Insights'),
-                NavigationDestination(icon: Icon(Icons.grid_view_outlined), selectedIcon: Icon(Icons.grid_view_rounded), label: 'News'),
-                NavigationDestination(icon: Icon(Icons.auto_awesome_outlined), selectedIcon: Icon(Icons.auto_awesome_rounded), label: 'Upgrade'),
-                NavigationDestination(icon: Icon(Icons.tune_outlined), selectedIcon: Icon(Icons.tune_rounded), label: 'Settings'),
+              tabs = [
+                const NavigationDestination(icon: Icon(Icons.quick_contacts_dialer_outlined), label: 'Calls'),
+                const NavigationDestination(icon: Icon(Icons.task_alt_rounded), label: 'Tasks'), // Added for Sales/Leaders
+                const NavigationDestination(icon: Icon(Icons.bar_chart_outlined), label: 'Insights'),
+                if (isLeader) const NavigationDestination(icon: Icon(Icons.groups_outlined), label: 'Team'),
+                const NavigationDestination(icon: Icon(Icons.tune_outlined), label: 'Settings'),
               ];
             }
 
             return ScaffoldWithNavBar(
               navigationShell: navigationShell, 
               tabs: tabs,
-              onTap: (index) {
-                if (!isAdmin && !isActive) {
-                  navigationShell.goBranch(index == 0 ? 3 : 4);
-                } else {
-                  navigationShell.goBranch(index);
-                }
-              },
+              onTap: (index) => navigationShell.goBranch(index),
             );
           },
           branches: authProvider.isAdmin
@@ -126,9 +116,9 @@ class AppRouter {
                       GoRoute(path: ':listId/process', builder: (context, state) => CallProcessScreen(listId: state.pathParameters['listId']!)),
                     ]),
                   ]),
+                  StatefulShellBranch(routes: [GoRoute(path: '/tasks', builder: (context, state) => const MyTasksScreen())]), // Added Tasks Branch
                   StatefulShellBranch(routes: [GoRoute(path: '/reports', builder: (context, state) => const ReportsScreen())]),
-                  StatefulShellBranch(routes: [GoRoute(path: '/news', builder: (context, state) => const NewsScreen())]),
-                  StatefulShellBranch(routes: [GoRoute(path: AppConstants.routeSubscription, builder: (context, state) => const SubscriptionScreen())]),
+                  StatefulShellBranch(routes: [GoRoute(path: '/team', builder: (context, state) => const TeamDashboardScreen())]),
                   StatefulShellBranch(routes: [
                     GoRoute(path: AppConstants.routeSettings, builder: (context, state) => const SettingsScreen(), routes: [
                       GoRoute(path: 'how-to-use', builder: (context, state) => const HowToUseScreen()),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../../core/services/notification_service.dart';
 import '../data/auth_repository.dart';
 import '../data/user_model.dart';
 
@@ -14,9 +15,8 @@ class AuthProvider with ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
   bool get isAdmin => _currentUser?.role == 'admin';
+  bool get isTeamLeader => _currentUser?.role == 'team_leader';
   bool get isFirstLogin => _isFirstLogin;
-  
-  // ✅ Added missing isAuthenticated getter
   bool get isAuthenticated => _currentUser != null;
 
   AuthProvider() {
@@ -25,6 +25,10 @@ class AuthProvider with ChangeNotifier {
 
   Future<void> _loadUser() async {
     _currentUser = await _repository.getCurrentUser();
+    if (_currentUser != null && _currentUser!.leaderId != null) {
+      // ✅ Automatically subscribe to team notifications
+      NotificationService().subscribeToTeam(_currentUser!.leaderId!);
+    }
     notifyListeners();
   }
 
@@ -32,17 +36,18 @@ class AuthProvider with ChangeNotifier {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
-
     try {
       final user = await _repository.login(email: email, password: password);
       if (user != null) {
         _currentUser = user;
         
+        if (_currentUser!.leaderId != null) {
+          NotificationService().subscribeToTeam(_currentUser!.leaderId!);
+        }
+
         final prefs = await SharedPreferences.getInstance();
         _isFirstLogin = !(prefs.getBool('has_logged_before') ?? false);
-        if (_isFirstLogin) {
-          await prefs.setBool('has_logged_before', true);
-        }
+        if (_isFirstLogin) await prefs.setBool('has_logged_before', true);
         
         _isLoading = false;
         notifyListeners();
@@ -51,32 +56,39 @@ class AuthProvider with ChangeNotifier {
     } catch (e) {
       _errorMessage = e.toString();
     }
-    
     _isLoading = false;
     notifyListeners();
     return false;
   }
 
-  Future<bool> register({required String email, required String password, required String fullName}) async {
+  Future<bool> joinTeam(String leaderScaId) async {
+    if (_currentUser == null) return false;
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
-
     try {
-      await _repository.register(email: email, password: password, fullName: fullName);
+      await _repository.joinTeam(_currentUser!.id, leaderScaId);
+      await refreshUser();
+      
+      // ✅ Subscribe to the new leader's topic
+      if (_currentUser?.leaderId != null) {
+        NotificationService().subscribeToTeam(_currentUser!.leaderId!);
+      }
+      
       _isLoading = false;
-      notifyListeners();
       return true;
     } catch (e) {
-      _errorMessage = e.toString();
+      _errorMessage = e.toString().replaceFirst('Exception: ', '');
+      _isLoading = false;
+      notifyListeners();
+      return false;
     }
-
-    _isLoading = false;
-    notifyListeners();
-    return false;
   }
 
   Future<void> logout() async {
+    if (_currentUser?.leaderId != null) {
+      NotificationService().unsubscribeFromTeam(_currentUser!.leaderId!);
+    }
     await _repository.logout();
     _currentUser = null;
     notifyListeners();

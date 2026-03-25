@@ -30,6 +30,26 @@ class CallsProvider extends ChangeNotifier {
     }
   }
 
+  Future<bool> createList(String name, String userId) async {
+    if (userId.isEmpty) {
+      _errorMessage = "User ID is missing. Please re-login.";
+      notifyListeners();
+      return false;
+    }
+    _setLoading(true);
+    try {
+      await _repository.createList(name, userId);
+      await loadLists();
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString();
+      notifyListeners();
+      return false;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
   Future<bool> toggleArchive(String listId, bool shouldArchive) async {
     try {
       await _repository.toggleArchive(listId, shouldArchive);

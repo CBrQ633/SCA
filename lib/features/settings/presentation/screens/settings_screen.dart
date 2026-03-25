@@ -28,11 +28,32 @@ class SettingsScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [
-          // ✅ User Profile Card (SCA ID System)
           if (user != null) _buildProfileCard(context, user, isArabic),
           
-          const SizedBox(height: 32),
+          const SizedBox(height: 24),
           
+          // ✅ Team Section
+          if (user != null && !user.isAdmin) ...[
+            _buildSectionLabel(isArabic ? 'الفريق' : 'My Team', theme),
+            _buildMenuCard(theme, [
+              if (user.leaderId == null)
+                ListTile(
+                  onTap: () => _showJoinTeamDialog(context, isArabic),
+                  leading: const Icon(Icons.group_add_rounded, color: Colors.orange),
+                  title: Text(isArabic ? 'الانضمام لفريق' : 'Join a Team'),
+                  subtitle: Text(isArabic ? 'أدخل كود التيم ليدر' : 'Enter Team Leader ID', style: const TextStyle(fontSize: 12)),
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                )
+              else
+                ListTile(
+                  leading: const Icon(Icons.verified_user_rounded, color: Colors.green),
+                  title: Text(isArabic ? 'عضو في فريق' : 'Team Member'),
+                  subtitle: Text(isArabic ? 'تم الربط بنجاح' : 'Connected to Leader', style: const TextStyle(fontSize: 12)),
+                ),
+            ]),
+            const SizedBox(height: 24),
+          ],
+
           _buildSectionLabel(isArabic ? 'التفضيلات' : 'Preferences', theme),
           _buildMenuCard(theme, [
             _buildToggleRow(
@@ -79,7 +100,6 @@ class SettingsScreen extends StatelessWidget {
 
           const SizedBox(height: 48),
           
-          // Logout Button
           ElevatedButton(
             onPressed: () => context.read<AuthProvider>().logout(),
             style: ElevatedButton.styleFrom(
@@ -94,6 +114,48 @@ class SettingsScreen extends StatelessWidget {
           
           const SizedBox(height: 20),
           Center(child: Text('App Version 1.1.0', style: TextStyle(color: theme.textTheme.bodySmall?.color, fontSize: 12))),
+        ],
+      ),
+    );
+  }
+
+  void _showJoinTeamDialog(BuildContext context, bool isArabic) {
+    final controller = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(isArabic ? 'الانضمام لفريق' : 'Join a Team'),
+        content: TextField(
+          controller: controller,
+          decoration: InputDecoration(
+            hintText: 'SCA-XXXXXX',
+            labelText: isArabic ? 'كود التيم ليدر' : 'Team Leader ID',
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+          textCapitalization: TextCapitalization.characters,
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text(isArabic ? 'إلغاء' : 'Cancel')),
+          ElevatedButton(
+            onPressed: () async {
+              final id = controller.text.trim();
+              if (id.isEmpty) return;
+              
+              final provider = context.read<AuthProvider>();
+              final success = await provider.joinTeam(id);
+              
+              if (ctx.mounted) {
+                Navigator.pop(ctx);
+                if (success) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(isArabic ? 'تم الانضمام بنجاح!' : 'Successfully joined the team!')));
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(provider.errorMessage ?? 'Error')));
+                }
+              }
+            },
+            child: Text(isArabic ? 'انضمام' : 'Join'),
+          ),
         ],
       ),
     );
