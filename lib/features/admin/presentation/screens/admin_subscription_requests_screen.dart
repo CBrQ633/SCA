@@ -157,7 +157,7 @@ class _AdminSubscriptionRequestsScreenState extends State<AdminSubscriptionReque
                               ListTile(
                                 contentPadding: const EdgeInsets.all(16),
                                 leading: CircleAvatar(
-                                  backgroundColor: theme.colorScheme.primary.withOpacity(0.1),
+                                  backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.1),
                                   child: Text(name[0].toUpperCase(), style: TextStyle(color: theme.colorScheme.primary, fontWeight: FontWeight.bold)),
                                 ),
                                 title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
@@ -170,7 +170,7 @@ class _AdminSubscriptionRequestsScreenState extends State<AdminSubscriptionReque
                                       children: [
                                         Container(
                                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                          decoration: BoxDecoration(color: theme.colorScheme.secondary.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+                                          decoration: BoxDecoration(color: theme.colorScheme.secondary.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
                                           child: Text(req['plan_type'].toUpperCase(), style: TextStyle(color: theme.colorScheme.secondary, fontWeight: FontWeight.bold, fontSize: 10)),
                                         ),
                                         const SizedBox(width: 8),
@@ -197,7 +197,7 @@ class _AdminSubscriptionRequestsScreenState extends State<AdminSubscriptionReque
                                     IconButton.filled(
                                       onPressed: () => _handleAction(req, false),
                                       icon: const Icon(Icons.close_rounded),
-                                      style: IconButton.styleFrom(backgroundColor: Colors.red.withOpacity(0.1), foregroundColor: Colors.red),
+                                      style: IconButton.styleFrom(backgroundColor: Colors.red.withValues(alpha: 0.1), foregroundColor: Colors.red),
                                     ),
                                     const SizedBox(width: 8),
                                     IconButton.filled(
@@ -223,7 +223,7 @@ class _AdminSubscriptionRequestsScreenState extends State<AdminSubscriptionReque
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.mark_email_read_outlined, size: 80, color: Colors.grey.withOpacity(0.3)),
+          Icon(Icons.mark_email_read_outlined, size: 80, color: Colors.grey.withValues(alpha: 0.3)),
           const SizedBox(height: 16),
           const Text('All caught up! No pending requests.', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
         ],

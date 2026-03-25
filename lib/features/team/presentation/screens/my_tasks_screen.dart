@@ -43,7 +43,9 @@ class _MyTasksScreenState extends State<MyTasksScreen> {
   Future<void> _toggleTask(String taskId, bool currentStatus) async {
     try {
       await _authRepo.updateTaskStatus(taskId, !currentStatus);
-      _loadTasks();
+      if (mounted) {
+        _loadTasks();
+      }
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
     }
@@ -52,7 +54,6 @@ class _MyTasksScreenState extends State<MyTasksScreen> {
   @override
   Widget build(BuildContext context) {
     final isArabic = Localizations.localeOf(context).languageCode == 'ar';
-    final theme = Theme.of(context);
 
     return Scaffold(
       appBar: AppBar(
@@ -116,7 +117,7 @@ class _MyTasksScreenState extends State<MyTasksScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.assignment_turned_in_outlined, size: 80, color: Colors.grey.withOpacity(0.2)),
+          Icon(Icons.assignment_turned_in_outlined, size: 80, color: Colors.grey.withValues(alpha: 0.2)),
           const SizedBox(height: 16),
           Text(isArabic ? 'لا توجد مهام حالياً' : 'No tasks assigned yet', style: const TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
         ],

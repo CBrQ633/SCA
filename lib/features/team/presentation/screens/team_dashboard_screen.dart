@@ -85,7 +85,7 @@ class _TeamDashboardScreenState extends State<TeamDashboardScreen> {
                 const SizedBox(height: 20),
                 Container(
                   padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(color: Colors.blue.withOpacity(0.05), borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.blue.withOpacity(0.2))),
+                  decoration: BoxDecoration(color: Colors.blue.withValues(alpha: 0.05), borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.blue.withValues(alpha: 0.2))),
                   child: ListTile(
                     contentPadding: EdgeInsets.zero,
                     title: Text(foundUser!.fullName ?? 'User', style: const TextStyle(fontWeight: FontWeight.bold)),
@@ -95,7 +95,7 @@ class _TeamDashboardScreenState extends State<TeamDashboardScreen> {
                       onPressed: () async {
                         final leaderId = context.read<AuthProvider>().currentUser!.id;
                         await _authRepo.addMemberToTeam(leaderId, foundUser!.id);
-                        if (mounted) {
+                        if (mounted && context.mounted) {
                           Navigator.pop(ctx);
                           _loadTeamData();
                           ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(isArabic ? 'تمت إضافة المندوب لفريقك' : 'Member added successfully!')));
@@ -141,7 +141,7 @@ class _TeamDashboardScreenState extends State<TeamDashboardScreen> {
                 body: controller.text,
               );
 
-              if (mounted) {
+              if (mounted && context.mounted) {
                 Navigator.pop(ctx);
                 ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Sent to everyone!')));
               }
@@ -203,7 +203,7 @@ class _TeamDashboardScreenState extends State<TeamDashboardScreen> {
             children: [
               ListTile(
                 contentPadding: EdgeInsets.zero,
-                leading: CircleAvatar(backgroundColor: theme.colorScheme.primary.withOpacity(0.1), child: Text(member.fullName?[0].toUpperCase() ?? 'M')),
+                leading: CircleAvatar(backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.1), child: Text(member.fullName?[0].toUpperCase() ?? 'M')),
                 title: Text(member.fullName ?? member.email, style: const TextStyle(fontWeight: FontWeight.bold)),
                 subtitle: Text(member.scaId ?? '', style: const TextStyle(fontSize: 11, color: Colors.blueGrey, fontWeight: FontWeight.bold)),
                 trailing: const Icon(Icons.chevron_right_rounded, color: Colors.grey),
@@ -231,7 +231,7 @@ class _TeamDashboardScreenState extends State<TeamDashboardScreen> {
   Widget _buildHeaderStats(ThemeData theme, bool isArabic) {
     return Container(
       padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(color: theme.colorScheme.primary, borderRadius: BorderRadius.circular(28), boxShadow: [BoxShadow(color: theme.colorScheme.primary.withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 10))]),
+      decoration: BoxDecoration(color: theme.colorScheme.primary, borderRadius: BorderRadius.circular(28), boxShadow: [BoxShadow(color: theme.colorScheme.primary.withValues(alpha: 0.3), blurRadius: 20, offset: const Offset(0, 10))]),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -244,13 +244,13 @@ class _TeamDashboardScreenState extends State<TeamDashboardScreen> {
   }
 
   Widget _buildStatItem(String label, String value, IconData icon) {
-    return Column(children: [Icon(icon, color: Colors.white, size: 24), const SizedBox(height: 8), Text(value, style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w900)), Text(label, style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 11, fontWeight: FontWeight.bold))]);
+    return Column(children: [Icon(icon, color: Colors.white, size: 24), const SizedBox(height: 8), Text(value, style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w900)), Text(label, style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 11, fontWeight: FontWeight.bold))]);
   }
 
   Widget _buildBroadcastCard(ThemeData theme, bool isArabic) {
     return Container(
       padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(color: Colors.orange.withOpacity(0.05), borderRadius: BorderRadius.circular(24), border: Border.all(color: Colors.orange.withOpacity(0.2))),
+      decoration: BoxDecoration(color: Colors.orange.withValues(alpha: 0.05), borderRadius: BorderRadius.circular(24), border: Border.all(color: Colors.orange.withValues(alpha: 0.2))),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [const Icon(Icons.campaign_rounded, color: Colors.orange), const SizedBox(width: 12), Text(isArabic ? 'رسالة جماعية' : 'Broadcast', style: const TextStyle(fontWeight: FontWeight.bold))]),
         const SizedBox(height: 8),
@@ -262,6 +262,6 @@ class _TeamDashboardScreenState extends State<TeamDashboardScreen> {
   }
 
   Widget _buildEmptyState(ThemeData theme, bool isArabic) {
-    return Center(child: Column(children: [const SizedBox(height: 40), Icon(Icons.group_off_rounded, size: 64, color: theme.colorScheme.primary.withOpacity(0.1)), const SizedBox(height: 16), Text(isArabic ? 'لا يوجد أعضاء في فريقك' : 'No team members', style: const TextStyle(color: Colors.grey, fontWeight: FontWeight.bold))]));
+    return Center(child: Column(children: [const SizedBox(height: 40), Icon(Icons.group_off_rounded, size: 64, color: theme.colorScheme.primary.withValues(alpha: 0.1)), const SizedBox(height: 16), Text(isArabic ? 'لا يوجد أعضاء في فريقك' : 'No team members', style: const TextStyle(color: Colors.grey, fontWeight: FontWeight.bold))]));
   }
 }

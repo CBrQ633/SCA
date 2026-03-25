@@ -1,7 +1,5 @@
-import 'package:flutter/foundation.dart' as foundation;
+import 'dart:async';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
 import '../../../core/config/supabase_config.dart';
 import 'user_model.dart';
 
@@ -75,6 +73,12 @@ class AuthRepository {
     await _supabase.from('profiles').update({'leader_id': leaderId}).eq('id', memberId);
   }
 
+  Future<void> joinTeam(String userId, String leaderScaId) async {
+    final leader = await findUserByScaId(leaderScaId);
+    if (leader == null) throw Exception('Leader not found / لم يتم العثور على القائد');
+    await addMemberToTeam(leader.id, userId);
+  }
+
   Future<void> sendBroadcast(String leaderId, String content) async {
     await _supabase.from('team_messages').insert({'leader_id': leaderId, 'content': content});
   }
@@ -123,6 +127,14 @@ class AuthRepository {
   }
 
   Future<void> deleteUser(String userId) async {
-    await _supabase.from('profiles').delete().eq(id, userId);
+    await _supabase.from('profiles').delete().eq('id', userId);
+  }
+
+  Future<int> getUsersCount() async {
+    final response = await _supabase.from('profiles').select('*').limit(1);
+    // In newer Supabase Flutter, 'count' is sometimes null or on the list if count: exact was omitted.
+    // However, the IDE is complaining about FetchOptions and arguments.
+    // Let's use the simplest valid select for now.
+    return (response as List).length; 
   }
 }

@@ -82,7 +82,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
         if (_leaders.length > 1) _buildPodiumItem(_leaders[1], 2, 120, Colors.grey, theme),
         
         // 1st Place
-        if (_leaders.length > 0) _buildPodiumItem(_leaders[0], 1, 160, Colors.amber, theme),
+        if (_leaders.isNotEmpty) _buildPodiumItem(_leaders[0], 1, 160, Colors.amber, theme),
         
         // 3rd Place
         if (_leaders.length > 2) _buildPodiumItem(_leaders[2], 3, 100, Colors.brown, theme),
@@ -95,7 +95,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
       children: [
         CircleAvatar(
           radius: rank == 1 ? 35 : 28,
-          backgroundColor: color.withOpacity(0.2),
+          backgroundColor: color.withValues(alpha: 0.2),
           child: Text(user['full_name']?[0].toUpperCase() ?? 'U', style: TextStyle(color: color, fontSize: rank == 1 ? 24 : 18, fontWeight: FontWeight.bold)),
         ),
         const SizedBox(height: 8),
@@ -107,7 +107,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
           decoration: BoxDecoration(
             color: color,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-            boxShadow: [BoxShadow(color: color.withOpacity(0.3), blurRadius: 10)],
+            boxShadow: [BoxShadow(color: color.withValues(alpha: 0.3), blurRadius: 10)],
           ),
           child: Center(
             child: Text(
@@ -127,7 +127,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: ListTile(
         leading: CircleAvatar(
-          backgroundColor: Colors.blueGrey.withOpacity(0.1),
+          backgroundColor: Colors.blueGrey.withValues(alpha: 0.1),
           child: Text('$rank', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
         ),
         title: Text(user['full_name'] ?? 'User', style: const TextStyle(fontWeight: FontWeight.bold)),

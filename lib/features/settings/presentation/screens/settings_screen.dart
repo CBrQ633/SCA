@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:smart_call_assistant/features/auth/presentation/auth_provider.dart';
 import 'package:smart_call_assistant/core/providers/settings_provider.dart';
-import 'package:smart_call_assistant/core/components/app_logo.dart';
 import 'package:go_router/go_router.dart';
 
 class SettingsScreen extends StatelessWidget {
@@ -20,18 +19,18 @@ class SettingsScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(isArabic ? 'الإعدادات' : 'Settings', 
-          style: TextStyle(color: colorScheme.onSurface, fontWeight: FontWeight.bold)
-        ),
+        title: Text(isArabic ? 'الإعدادات' : 'Settings',
+            style: TextStyle(
+                color: colorScheme.onSurface, fontWeight: FontWeight.bold)),
         centerTitle: true,
       ),
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [
           if (user != null) _buildProfileCard(context, user, isArabic),
-          
+
           const SizedBox(height: 24),
-          
+
           // ✅ Team Section
           if (user != null && !user.isAdmin) ...[
             _buildSectionLabel(isArabic ? 'الفريق' : 'My Team', theme),
@@ -39,16 +38,22 @@ class SettingsScreen extends StatelessWidget {
               if (user.leaderId == null)
                 ListTile(
                   onTap: () => _showJoinTeamDialog(context, isArabic),
-                  leading: const Icon(Icons.group_add_rounded, color: Colors.orange),
+                  leading:
+                      const Icon(Icons.group_add_rounded, color: Colors.orange),
                   title: Text(isArabic ? 'الانضمام لفريق' : 'Join a Team'),
-                  subtitle: Text(isArabic ? 'أدخل كود التيم ليدر' : 'Enter Team Leader ID', style: const TextStyle(fontSize: 12)),
+                  subtitle: Text(
+                      isArabic ? 'أدخل كود التيم ليدر' : 'Enter Team Leader ID',
+                      style: const TextStyle(fontSize: 12)),
                   trailing: const Icon(Icons.chevron_right_rounded),
                 )
               else
                 ListTile(
-                  leading: const Icon(Icons.verified_user_rounded, color: Colors.green),
+                  leading: const Icon(Icons.verified_user_rounded,
+                      color: Colors.green),
                   title: Text(isArabic ? 'عضو في فريق' : 'Team Member'),
-                  subtitle: Text(isArabic ? 'تم الربط بنجاح' : 'Connected to Leader', style: const TextStyle(fontSize: 12)),
+                  subtitle: Text(
+                      isArabic ? 'تم الربط بنجاح' : 'Connected to Leader',
+                      style: const TextStyle(fontSize: 12)),
                 ),
             ]),
             const SizedBox(height: 24),
@@ -61,12 +66,15 @@ class SettingsScreen extends StatelessWidget {
               icon: Icons.language_rounded,
               title: isArabic ? 'اللغة العربية' : 'Arabic Language',
               value: isArabic,
-              onChanged: (v) => settingsProvider.setLocale(v ? const Locale('ar') : const Locale('en')),
+              onChanged: (v) => settingsProvider
+                  .setLocale(v ? const Locale('ar') : const Locale('en')),
             ),
             const Divider(height: 1, indent: 50),
             _buildToggleRow(
               theme: theme,
-              icon: settingsProvider.isDarkMode ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
+              icon: settingsProvider.isDarkMode
+                  ? Icons.dark_mode_rounded
+                  : Icons.light_mode_rounded,
               title: isArabic ? 'الوضع الداكن' : 'Dark Mode',
               value: settingsProvider.isDarkMode,
               onChanged: (v) => settingsProvider.toggleTheme(),
@@ -81,7 +89,8 @@ class SettingsScreen extends StatelessWidget {
           ]),
 
           const SizedBox(height: 24),
-          _buildSectionLabel(isArabic ? 'الدعم والمساعدة' : 'Support & Help', theme),
+          _buildSectionLabel(
+              isArabic ? 'الدعم والمساعدة' : 'Support & Help', theme),
           _buildMenuCard(theme, [
             _buildNavRow(
               theme: theme,
@@ -99,21 +108,27 @@ class SettingsScreen extends StatelessWidget {
           ]),
 
           const SizedBox(height: 48),
-          
+
           ElevatedButton(
             onPressed: () => context.read<AuthProvider>().logout(),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red.withOpacity(0.1),
+              backgroundColor: Colors.red.withValues(alpha: 0.1),
               foregroundColor: Colors.red,
               elevation: 0,
               minimumSize: const Size(double.infinity, 56),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16)),
             ),
-            child: Text(isArabic ? 'تسجيل الخروج' : 'Logout', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            child: Text(isArabic ? 'تسجيل الخروج' : 'Logout',
+                style:
+                    const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
           ),
-          
+
           const SizedBox(height: 20),
-          Center(child: Text('App Version 1.1.0', style: TextStyle(color: theme.textTheme.bodySmall?.color, fontSize: 12))),
+          Center(
+              child: Text('App Version 1.1.0',
+                  style: TextStyle(
+                      color: theme.textTheme.bodySmall?.color, fontSize: 12))),
         ],
       ),
     );
@@ -136,21 +151,27 @@ class SettingsScreen extends StatelessWidget {
           textCapitalization: TextCapitalization.characters,
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: Text(isArabic ? 'إلغاء' : 'Cancel')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text(isArabic ? 'إلغاء' : 'Cancel')),
           ElevatedButton(
             onPressed: () async {
               final id = controller.text.trim();
               if (id.isEmpty) return;
-              
+
               final provider = context.read<AuthProvider>();
               final success = await provider.joinTeam(id);
-              
+
               if (ctx.mounted) {
                 Navigator.pop(ctx);
                 if (success) {
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(isArabic ? 'تم الانضمام بنجاح!' : 'Successfully joined the team!')));
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                      content: Text(isArabic
+                          ? 'تم الانضمام بنجاح!'
+                          : 'Successfully joined the team!')));
                 } else {
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(provider.errorMessage ?? 'Error')));
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                      content: Text(provider.errorMessage ?? 'Error')));
                 }
               }
             },
@@ -168,7 +189,12 @@ class SettingsScreen extends StatelessWidget {
       decoration: BoxDecoration(
         color: theme.colorScheme.primary,
         borderRadius: BorderRadius.circular(24),
-        boxShadow: [BoxShadow(color: theme.colorScheme.primary.withOpacity(0.3), blurRadius: 15, offset: const Offset(0, 8))],
+        boxShadow: [
+          BoxShadow(
+              color: theme.colorScheme.primary.withValues(alpha: 0.3),
+              blurRadius: 15,
+              offset: const Offset(0, 8))
+        ],
       ),
       child: Column(
         children: [
@@ -176,21 +202,35 @@ class SettingsScreen extends StatelessWidget {
             children: [
               CircleAvatar(
                 radius: 30,
-                backgroundColor: Colors.white.withOpacity(0.2),
-                child: Text(user.fullName?[0].toUpperCase() ?? 'U', style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
+                backgroundColor: Colors.white.withValues(alpha: 0.2),
+                child: Text(user.fullName?[0].toUpperCase() ?? 'U',
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold)),
               ),
               const SizedBox(width: 16),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(user.fullName ?? 'User', style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                    Text(user.fullName ?? 'User',
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold)),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                      decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), borderRadius: BorderRadius.circular(8)),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(8)),
                       child: Text(
                         user.role.toString().replaceAll('_', ' ').toUpperCase(),
-                        style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold),
                       ),
                     ),
                   ],
@@ -207,17 +247,30 @@ class SettingsScreen extends StatelessWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(isArabic ? 'هويتك الفريدة' : 'YOUR SCA ID', style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 10, fontWeight: FontWeight.bold)),
-                  Text(user.scaId ?? 'SCA-XXXXXX', style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w900, letterSpacing: 1.5)),
+                  Text(isArabic ? 'هويتك الفريدة' : 'YOUR SCA ID',
+                      style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.6),
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold)),
+                  Text(user.scaId ?? 'SCA-XXXXXX',
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 1.5)),
                 ],
               ),
               IconButton(
                 onPressed: () {
                   Clipboard.setData(ClipboardData(text: user.scaId ?? ''));
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(isArabic ? 'تم نسخ المعرف!' : 'ID Copied to clipboard!')));
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                      content: Text(isArabic
+                          ? 'تم نسخ المعرف!'
+                          : 'ID Copied to clipboard!')));
                 },
                 icon: const Icon(Icons.copy_rounded, color: Colors.white),
-                style: IconButton.styleFrom(backgroundColor: Colors.white.withOpacity(0.1)),
+                style: IconButton.styleFrom(
+                    backgroundColor: Colors.white.withValues(alpha: 0.1)),
               )
             ],
           ),
@@ -229,7 +282,12 @@ class SettingsScreen extends StatelessWidget {
   Widget _buildSectionLabel(String text, ThemeData theme) {
     return Padding(
       padding: const EdgeInsets.only(left: 8, bottom: 10),
-      child: Text(text, style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: theme.colorScheme.secondary, letterSpacing: 0.5)),
+      child: Text(text,
+          style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.bold,
+              color: theme.colorScheme.secondary,
+              letterSpacing: 0.5)),
     );
   }
 
@@ -239,26 +297,51 @@ class SettingsScreen extends StatelessWidget {
       decoration: BoxDecoration(
         color: theme.cardTheme.color,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 12, offset: const Offset(0, 4))],
+        boxShadow: [
+          BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 12,
+              offset: const Offset(0, 4))
+        ],
       ),
       child: Column(children: children),
     );
   }
 
-  Widget _buildToggleRow({required ThemeData theme, required IconData icon, required String title, required bool value, required Function(bool) onChanged}) {
+  Widget _buildToggleRow(
+      {required ThemeData theme,
+      required IconData icon,
+      required String title,
+      required bool value,
+      required Function(bool) onChanged}) {
     return ListTile(
       leading: Icon(icon, color: theme.colorScheme.primary, size: 22),
-      title: Text(title, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: theme.colorScheme.onSurface)),
-      trailing: Switch.adaptive(value: value, onChanged: onChanged, activeColor: theme.colorScheme.secondary),
+      title: Text(title,
+          style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: theme.colorScheme.onSurface)),
+      trailing: Switch.adaptive(
+          value: value,
+          onChanged: onChanged),
     );
   }
 
-  Widget _buildNavRow({required ThemeData theme, required IconData icon, required String title, required VoidCallback onTap}) {
+  Widget _buildNavRow(
+      {required ThemeData theme,
+      required IconData icon,
+      required String title,
+      required VoidCallback onTap}) {
     return ListTile(
       onTap: onTap,
       leading: Icon(icon, color: theme.colorScheme.primary, size: 22),
-      title: Text(title, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: theme.colorScheme.onSurface)),
-      trailing: Icon(Icons.chevron_right_rounded, color: theme.textTheme.bodySmall?.color, size: 20),
+      title: Text(title,
+          style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: theme.colorScheme.onSurface)),
+      trailing: Icon(Icons.chevron_right_rounded,
+          color: theme.textTheme.bodySmall?.color, size: 20),
     );
   }
 }

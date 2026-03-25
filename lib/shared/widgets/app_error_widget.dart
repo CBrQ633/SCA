@@ -27,7 +27,7 @@ class AppErrorWidget extends StatelessWidget {
               child: Icon(
                 icon ?? Icons.cloud_off_rounded,
                 size: 80,
-                color: theme.colorScheme.error.withOpacity(0.5),
+                color: theme.colorScheme.error.withValues(alpha: 0.5),
               ),
             ),
             const SizedBox(height: 24),

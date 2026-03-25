@@ -115,7 +115,7 @@ class _CallListsScreenState extends State<CallListsScreen> {
       onTap: onTap,
       leading: Container(
         padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(color: color.withOpacity(0.1), shape: BoxShape.circle),
+        decoration: BoxDecoration(color: color.withValues(alpha: 0.1), shape: BoxShape.circle),
         child: Icon(icon, color: color),
       ),
       title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
@@ -132,7 +132,7 @@ class _CallListsScreenState extends State<CallListsScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              FadeInDown(child: Icon(Icons.contact_phone_outlined, size: 80, color: theme.colorScheme.primary.withOpacity(0.2))),
+              FadeInDown(child: Icon(Icons.contact_phone_outlined, size: 80, color: theme.colorScheme.primary.withValues(alpha: 0.2))),
               const SizedBox(height: 24),
               const Text('No call lists yet / لا توجد قوائم', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.grey)),
               const SizedBox(height: 12),
@@ -178,7 +178,7 @@ class _CallListsScreenState extends State<CallListsScreen> {
                 children: [
                   Container(
                     padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(color: theme.colorScheme.primary.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+                    decoration: BoxDecoration(color: theme.colorScheme.primary.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
                     child: Icon(Icons.list_alt_rounded, color: theme.colorScheme.primary),
                   ),
                   const SizedBox(width: 16),
@@ -273,7 +273,7 @@ class _CallListsScreenState extends State<CallListsScreen> {
             onPressed: () async {
               if (controller.text.isNotEmpty) {
                 final success = await context.read<CallsProvider>().createList(controller.text, userId);
-                if (mounted && success) {
+                if (mounted && context.mounted && success) {
                   Navigator.pop(ctx);
                 }
               }
@@ -350,12 +350,14 @@ class _CallListsScreenState extends State<CallListsScreen> {
                   final newList = await _repository.createList(name, userId);
                   final itemsToInsert = numbers.map((p) => {'name': 'Extracted', 'phone': p}).toList();
                   final result = await _repository.addItemsToList(newList.id, itemsToInsert);
-                  if (mounted) {
+                  if (mounted && context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Success! Added ${result['added']} contacts.')));
                     provider.loadLists();
                   }
                 } catch (e) {
-                  if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+                  if (mounted && context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+                  }
                 }
               },
               child: const Text('SAVE LIST'),
@@ -419,13 +421,15 @@ class _CallListsScreenState extends State<CallListsScreen> {
                   if (processed.isNotEmpty) {
                     final newList = await _repository.createList(name, userId);
                     final result = await _repository.addItemsToList(newList.id, processed);
-                    if (mounted) {
+                    if (mounted && context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Created "$name" with ${result['added']} contacts.')));
                       provider.loadLists();
                     }
                   }
                 } catch (e) {
-                  if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+                  if (mounted && context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+                  }
                 }
               },
               child: const Text('IMPORT NOW'),
@@ -444,7 +448,7 @@ class _CallListsScreenState extends State<CallListsScreen> {
         const SizedBox(height: 4),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12),
-          decoration: BoxDecoration(border: Border.all(color: Colors.grey.withOpacity(0.3)), borderRadius: BorderRadius.circular(12)),
+          decoration: BoxDecoration(border: Border.all(color: Colors.grey.withValues(alpha: 0.3)), borderRadius: BorderRadius.circular(12)),
           child: DropdownButtonHideUnderline(
             child: DropdownButton<int>(
               value: current,

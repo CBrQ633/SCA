@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import '../../data/reports_repository.dart';
 import '../../data/models/report_stats.dart';
 import '../../../../core/services/excel_service.dart';
-import '../../../../core/components/app_logo.dart';
+// import '../../../../core/components/app_logo.dart';
 import '../../../../shared/services/models.dart';
 import '../../../auth/presentation/auth_provider.dart';
 import '../../../auth/data/auth_repository.dart';
@@ -44,6 +44,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
       if (user?.leaderId != null) {
         _teamMessages = await _authRepo.getTeamMessages(user!.leaderId!);
       }
+
+      if (!mounted) return;
 
       if (mounted) {
         setState(() {
@@ -147,7 +149,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
       decoration: BoxDecoration(
         color: theme.colorScheme.primary,
         borderRadius: BorderRadius.circular(28),
-        boxShadow: [BoxShadow(color: theme.colorScheme.primary.withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 10))],
+        boxShadow: [BoxShadow(color: theme.colorScheme.primary.withValues(alpha: 0.3), blurRadius: 20, offset: const Offset(0, 10))],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -155,7 +157,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(isArabic ? 'هدفك الشهري' : 'MONTHLY TARGET', style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
+              Text(isArabic ? 'هدفك الشهري' : 'MONTHLY TARGET', style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
               const Icon(Icons.track_changes_rounded, color: Colors.white, size: 20),
             ],
           ),
@@ -167,14 +169,14 @@ class _ReportsScreenState extends State<ReportsScreen> {
             child: LinearProgressIndicator(
               value: progress,
               minHeight: 10,
-              backgroundColor: Colors.white.withOpacity(0.2),
+              backgroundColor: Colors.white.withValues(alpha: 0.2),
               valueColor: const AlwaysStoppedAnimation<Color>(Colors.orangeAccent),
             ),
           ),
           const SizedBox(height: 8),
           Text(
             isArabic ? 'لقد حققت ${(progress * 100).toInt()}% من هدفك' : 'You achieved ${(progress * 100).toInt()}% of your target',
-            style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 12),
+            style: TextStyle(color: Colors.white.withValues(alpha: 0.9), fontSize: 12),
           ),
         ],
       ),
@@ -185,7 +187,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
     if (_teamMessages.isEmpty) {
       return Container(
         padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(color: Colors.grey.withOpacity(0.05), borderRadius: BorderRadius.circular(20)),
+        decoration: BoxDecoration(color: Colors.grey.withValues(alpha: 0.05), borderRadius: BorderRadius.circular(20)),
         child: Center(child: Text(isArabic ? 'لا توجد رسائل من الليدر حالياً' : 'No messages from leader yet', style: const TextStyle(fontSize: 12, color: Colors.grey))),
       );
     }
@@ -195,9 +197,9 @@ class _ReportsScreenState extends State<ReportsScreen> {
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.orange.withOpacity(0.05),
+          color: Colors.orange.withValues(alpha: 0.05),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.orange.withOpacity(0.1)),
+          border: Border.all(color: Colors.orange.withValues(alpha: 0.1)),
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -233,7 +235,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
             child: CircularProgressIndicator(
               value: _successRate,
               strokeWidth: 12,
-              backgroundColor: theme.colorScheme.primary.withOpacity(0.05),
+              backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.05),
               valueColor: AlwaysStoppedAnimation<Color>(theme.colorScheme.secondary),
             ),
           ),
@@ -259,7 +261,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
       decoration: BoxDecoration(
         color: theme.cardTheme.color, 
         borderRadius: BorderRadius.circular(24),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4))],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10, offset: const Offset(0, 4))],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -279,7 +281,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: theme.scaffoldBackgroundColor,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       builder: (context) => DraggableScrollableSheet(
         initialChildSize: 0.7,
         maxChildSize: 0.9,
@@ -313,7 +315,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                       final call = filteredCalls[index];
                       return ListTile(
                         leading: CircleAvatar(
-                          backgroundColor: theme.colorScheme.primary.withOpacity(0.05), 
+                          backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.05), 
                           child: Text('${index + 1}', style: TextStyle(fontSize: 12, color: theme.colorScheme.primary))
                         ),
                         title: Text(call.customerName ?? 'Unknown', style: const TextStyle(fontWeight: FontWeight.bold)),

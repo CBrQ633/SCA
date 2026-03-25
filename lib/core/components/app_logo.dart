@@ -28,7 +28,7 @@ class AppLogo extends StatelessWidget {
               width: size,
               height: size,
               decoration: BoxDecoration(
-                color: primary.withOpacity(0.1),
+                color: primary.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(size * 0.3),
                 border: Border.all(color: primary, width: size * 0.05),
               ),
@@ -63,7 +63,7 @@ class AppLogo extends StatelessWidget {
           Text(
             'Smart Call Assistant',
             style: TextStyle(
-              color: primary.withOpacity(0.8),
+              color: primary.withValues(alpha: 0.8),
               fontSize: size * 0.18,
               fontWeight: FontWeight.w600,
               letterSpacing: 1.2,

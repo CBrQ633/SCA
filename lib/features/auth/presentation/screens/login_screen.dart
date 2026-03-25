@@ -129,7 +129,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text('Don\'t have an account? ', style: TextStyle(color: theme.textTheme.bodySmall?.color?.withOpacity(0.7))),
+                      Text('Don\'t have an account? ', style: TextStyle(color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.7))),
                       TextButton(
                         onPressed: () => context.go(AppConstants.routeRegister),
                         child: Text(

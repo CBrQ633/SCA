@@ -51,8 +51,10 @@ class _TemplatesScreenState extends State<TemplatesScreen> {
                 } else {
                   await _service.updateTemplate(index, controller.text);
                 }
-                Navigator.pop(ctx);
-                _loadTemplates();
+                if (mounted && context.mounted) {
+                  Navigator.pop(ctx);
+                  _loadTemplates();
+                }
               }
             },
             child: const Text('SAVE'),
@@ -64,7 +66,6 @@ class _TemplatesScreenState extends State<TemplatesScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Scaffold(
       appBar: AppBar(
         title: const Text('WhatsApp Templates', style: TextStyle(fontWeight: FontWeight.bold)),

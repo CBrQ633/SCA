@@ -126,7 +126,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       decoration: BoxDecoration(
         color: Colors.white, 
         borderRadius: BorderRadius.circular(28), 
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 20, offset: const Offset(0, 10))]
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 20, offset: const Offset(0, 10))]
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -145,14 +145,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       decoration: BoxDecoration(
         color: Colors.white, 
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.black.withOpacity(0.03)),
+        border: Border.all(color: Colors.black.withValues(alpha: 0.03)),
       ),
       child: ListTile(
         onTap: onTap,
         contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
         leading: Container(
           padding: const EdgeInsets.all(12), 
-          decoration: BoxDecoration(color: color.withOpacity(0.08), shape: BoxShape.circle), 
+          decoration: BoxDecoration(color: color.withValues(alpha: 0.08), shape: BoxShape.circle), 
           child: Icon(icon, color: color, size: 20)
         ),
         title: Text(title, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: Color(0xFF0F172A))),

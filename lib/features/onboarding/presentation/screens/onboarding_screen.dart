@@ -18,22 +18,26 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   final List<OnboardingItem> _items = [
     OnboardingItem(
       title: 'استيراد ذكي للأرقام',
-      desc: 'بكل بساطة، ارفع ملف إكسيل أو صورة سكرين شوت، والتطبيق سيقوم باستخراج الأرقام المصرية والأسماء بدقة متناهية.',
+      desc:
+          'بكل بساطة، ارفع ملف إكسيل أو صورة سكرين شوت، والتطبيق سيقوم باستخراج الأرقام المصرية والأسماء بدقة متناهية.',
       icon: Icons.auto_fix_high_rounded,
     ),
     OnboardingItem(
       title: 'نظام الاتصال المتسلسل',
-      desc: 'بدلاً من البحث عن كل رقم يدوياً، ابدأ جلسة اتصال ذكية تتنقل بك بين العملاء بضغطة زر واحدة (اتصال أو واتساب).',
+      desc:
+          'بدلاً من البحث عن كل رقم يدوياً، ابدأ جلسة اتصال ذكية تتنقل بك بين العملاء بضغطة زر واحدة (اتصال أو واتساب).',
       icon: Icons.play_circle_filled_rounded,
     ),
     OnboardingItem(
       title: 'تقارير احترافية ومفصلة',
-      desc: 'تابع معدل نجاحك وصدر تقارير إكسيل مفصلة للعملاء الذين ردوا أو لم يردوا، مع إمكانية كتابة ملاحظاتك الخاصة.',
+      desc:
+          'تابع معدل نجاحك وصدر تقارير إكسيل مفصلة للعملاء الذين ردوا أو لم يردوا، مع إمكانية كتابة ملاحظاتك الخاصة.',
       icon: Icons.insights_rounded,
     ),
     OnboardingItem(
       title: 'ابدأ نجاحك الآن',
-      desc: 'فعل اشتراكك الآن لتفتح الباب أمام نظام مبيعات منظم، سريع، واحترافي يضاعف إنتاجيتك.',
+      desc:
+          'فعل اشتراكك الآن لتفتح الباب أمام نظام مبيعات منظم، سريع، واحترافي يضاعف إنتاجيتك.',
       icon: Icons.star_rounded,
     ),
   ];
@@ -66,7 +70,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 itemBuilder: (context, idx) => _buildPage(_items[idx]),
               ),
             ),
-            
+
             // Indicators & Button
             Padding(
               padding: const EdgeInsets.all(32.0),
@@ -74,7 +78,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 children: [
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
-                    children: List.generate(_items.length, (idx) => _buildIndicator(idx == _currentPage, emerald)),
+                    children: List.generate(_items.length,
+                        (idx) => _buildIndicator(idx == _currentPage, emerald)),
                   ),
                   const SizedBox(height: 40),
                   ElevatedButton(
@@ -82,24 +87,31 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       if (_currentPage == _items.length - 1) {
                         _completeOnboarding();
                       } else {
-                        _pageController.nextPage(duration: const Duration(milliseconds: 400), curve: Curves.easeInOut);
+                        _pageController.nextPage(
+                            duration: const Duration(milliseconds: 400),
+                            curve: Curves.easeInOut);
                       }
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: navy,
                       foregroundColor: Colors.white,
                       minimumSize: const Size(double.infinity, 60),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(18)),
                       elevation: 0,
                     ),
                     child: Text(
-                      _currentPage == _items.length - 1 ? 'ابدأ الآن / GET STARTED' : 'التالي / NEXT',
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                      _currentPage == _items.length - 1
+                          ? 'ابدأ الآن / GET STARTED'
+                          : 'التالي / NEXT',
+                      style: const TextStyle(
+                          fontWeight: FontWeight.bold, fontSize: 16),
                     ),
                   ),
                   TextButton(
                     onPressed: _completeOnboarding,
-                    child: const Text('تخطي / Skip', style: TextStyle(color: Colors.grey)),
+                    child: const Text('تخطي / Skip',
+                        style: TextStyle(color: Colors.grey)),
                   ),
                 ],
               ),
@@ -118,20 +130,25 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         children: [
           Container(
             padding: const EdgeInsets.all(30),
-            decoration: BoxDecoration(color: const Color(0xFFF1F5F9), shape: BoxShape.circle),
+            decoration: const BoxDecoration(
+                color: Color(0xFFF1F5F9), shape: BoxShape.circle),
             child: Icon(item.icon, size: 80, color: const Color(0xFF0F172A)),
           ),
           const SizedBox(height: 48),
           Text(
             item.title,
             textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+            style: const TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF0F172A)),
           ),
           const SizedBox(height: 16),
           Text(
             item.desc,
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 15, color: Colors.blueGrey[600], height: 1.6),
+            style: TextStyle(
+                fontSize: 15, color: Colors.blueGrey[600], height: 1.6),
           ),
         ],
       ),
@@ -144,7 +161,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       margin: const EdgeInsets.symmetric(horizontal: 4),
       height: 8,
       width: isActive ? 24 : 8,
-      decoration: BoxDecoration(color: isActive ? color : Colors.grey[300], borderRadius: BorderRadius.circular(4)),
+      decoration: BoxDecoration(
+          color: isActive ? color : Colors.grey[300],
+          borderRadius: BorderRadius.circular(4)),
     );
   }
 }

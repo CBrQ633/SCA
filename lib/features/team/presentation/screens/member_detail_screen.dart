@@ -6,7 +6,7 @@ import 'package:smart_call_assistant/features/auth/data/user_model.dart';
 import 'package:smart_call_assistant/features/auth/presentation/auth_provider.dart';
 import 'package:smart_call_assistant/features/auth/data/auth_repository.dart';
 import 'package:smart_call_assistant/features/calls/data/calls_repository.dart';
-import 'package:smart_call_assistant/core/services/excel_service.dart';
+// import 'package:smart_call_assistant/core/services/excel_service.dart';
 import 'package:smart_call_assistant/core/services/notification_service.dart';
 import 'package:animate_do/animate_do.dart';
 
@@ -49,6 +49,7 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Uploading & Assigning file...')));
       try {
         final items = await _callsRepo.importFromExcel(file);
+        if (!mounted || !context.mounted) return;
         final leaderId = context.read<AuthProvider>().currentUser!.id; 
         final newList = await _callsRepo.createList(fileName, leaderId, assignedTo: widget.member.id);
         await _callsRepo.addItemsToList(newList.id, items);
@@ -106,7 +107,7 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
                 body: titleController.text.trim(),
               );
 
-              if (mounted) {
+              if (mounted && context.mounted) {
                 Navigator.pop(ctx);
                 ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Task sent successfully!')));
               }
@@ -143,7 +144,7 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
   Widget _buildProfileHeader(ThemeData theme, bool isArabic) {
     return Container(
       padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(color: theme.colorScheme.primary.withOpacity(0.05), borderRadius: BorderRadius.circular(24), border: Border.all(color: theme.colorScheme.primary.withOpacity(0.1))),
+      decoration: BoxDecoration(color: theme.colorScheme.primary.withValues(alpha: 0.05), borderRadius: BorderRadius.circular(24), border: Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.1))),
       child: Column(children: [
         CircleAvatar(radius: 40, backgroundColor: theme.colorScheme.primary, child: Text(widget.member.fullName?[0].toUpperCase() ?? 'U', style: const TextStyle(color: Colors.white, fontSize: 32))),
         const SizedBox(height: 16),
@@ -182,7 +183,7 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
   Widget _buildStatCard(String label, String value, Color color) {
     return Container(
       padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10)]),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10)]),
       child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
         Text(value, style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: color)),
         Text(label, textAlign: TextAlign.center, style: const TextStyle(fontSize: 10, color: Colors.grey)),
@@ -206,7 +207,7 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
         width: double.infinity, height: 56,
         child: OutlinedButton.icon(
           onPressed: () => _showAddTaskDialog(isArabic),
-          icon: const Icon(Icons.assignment_add_rounded),
+          icon: const Icon(Icons.add_task_rounded),
           label: Text(isArabic ? 'إرسال مهمة خاصة (Task)' : 'Send Private Task'),
           style: OutlinedButton.styleFrom(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
         ),

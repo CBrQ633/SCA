@@ -148,7 +148,7 @@ class _CallListDetailsScreenState extends State<CallListDetailsScreen> {
               const Text('Data Preview (First 3 rows):', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
               const SizedBox(height: 8),
               Container(
-                decoration: BoxDecoration(color: Colors.grey.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+                decoration: BoxDecoration(color: Colors.grey.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
                 padding: const EdgeInsets.all(8),
                 child: Column(
                   children: rows.take(3).map((row) => Padding(
@@ -174,8 +174,10 @@ class _CallListDetailsScreenState extends State<CallListDetailsScreen> {
                 if (processed.isNotEmpty) {
                   setState(() => _isLoading = true);
                   await _repository.addItemsToList(widget.listId, processed);
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Added ${processed.length} contacts')));
-                  _loadItems();
+                  if (mounted && context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Added ${processed.length} contacts')));
+                    _loadItems();
+                  }
                 }
               },
               child: const Text('IMPORT NOW'),
@@ -194,7 +196,7 @@ class _CallListDetailsScreenState extends State<CallListDetailsScreen> {
         const SizedBox(height: 4),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12),
-          decoration: BoxDecoration(border: Border.all(color: Colors.grey.withOpacity(0.3)), borderRadius: BorderRadius.circular(12)),
+          decoration: BoxDecoration(border: Border.all(color: Colors.grey.withValues(alpha: 0.3)), borderRadius: BorderRadius.circular(12)),
           child: DropdownButtonHideUnderline(
             child: DropdownButton<int>(
               value: current,
@@ -227,12 +229,16 @@ class _CallListDetailsScreenState extends State<CallListDetailsScreen> {
         if (rows.isNotEmpty) {
           await _showExcelPreview(rows);
         } else {
+        if (mounted && context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Excel file is empty')));
+        }
         }
       }
     } catch (e) {
       setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Import Error: $e')));
+      if (mounted && context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Import Error: $e')));
+      }
     }
   }
 
@@ -327,7 +333,7 @@ class _CallListDetailsScreenState extends State<CallListDetailsScreen> {
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                             child: ListTile(
                               leading: CircleAvatar(
-                                backgroundColor: theme.colorScheme.primary.withOpacity(0.1),
+                                backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.1),
                                 child: Text('${index + 1}', style: TextStyle(color: theme.colorScheme.primary, fontWeight: FontWeight.bold)),
                               ),
                               title: Text(item.name ?? 'Unknown', style: const TextStyle(fontWeight: FontWeight.bold)),
@@ -379,7 +385,7 @@ class _CallListDetailsScreenState extends State<CallListDetailsScreen> {
         onSelected: (s) => setState(() => _selectedFilter = value),
         selectedColor: theme.colorScheme.primary,
         checkmarkColor: Colors.white,
-        backgroundColor: theme.colorScheme.primary.withOpacity(0.05),
+        backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.05),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       ),
     );
@@ -395,7 +401,7 @@ class _CallListDetailsScreenState extends State<CallListDetailsScreen> {
     }
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+      decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [

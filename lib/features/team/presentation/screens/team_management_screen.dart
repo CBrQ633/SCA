@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:animate_do/animate_do.dart';
-import '../../auth/presentation/auth_provider.dart';
-import '../../auth/data/user_model.dart';
-import '../../team/data/team_repository.dart';
+import 'package:smart_call_assistant/features/auth/presentation/auth_provider.dart';
+import 'package:smart_call_assistant/features/auth/data/user_model.dart';
+import 'package:smart_call_assistant/features/team/data/team_repository.dart';
 
 class TeamManagementScreen extends StatefulWidget {
   const TeamManagementScreen({super.key});
@@ -138,7 +138,7 @@ class _TeamManagementScreenState extends State<TeamManagementScreen> {
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                         child: ListTile(
                           leading: CircleAvatar(
-                            backgroundColor: theme.colorScheme.primary.withOpacity(0.1),
+                            backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.1),
                             child: Text(member.fullName?[0].toUpperCase() ?? 'U', 
                               style: TextStyle(color: theme.colorScheme.primary, fontWeight: FontWeight.bold)),
                           ),
@@ -167,7 +167,7 @@ class _TeamManagementScreenState extends State<TeamManagementScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.group_add_outlined, size: 80, color: Colors.grey.withOpacity(0.3)),
+          Icon(Icons.group_add_outlined, size: 80, color: Colors.grey.withValues(alpha: 0.3)),
           const SizedBox(height: 16),
           const Text('Your team is empty', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
           const Text('Give your SCA ID to members to join', style: TextStyle(color: Colors.grey, fontSize: 12)),

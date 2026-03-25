@@ -63,10 +63,11 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
         amount: amount,
         proofImage: _proofImage!,
       );
+      if (!mounted) return;
       if (mounted) {
         AppNotifications.showSuccess(context, 'Request submitted! / تم إرسال الطلب');
         setState(() { _selectedPlan = null; _proofImage = null; });
-        await context.read<AuthProvider>().refreshUser();
+        if (mounted) await context.read<AuthProvider>().refreshUser();
       }
     } catch (e) {
       if (mounted) AppNotifications.showError(context, 'Error: $e');
@@ -123,7 +124,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                   decoration: BoxDecoration(
                     color: theme.cardTheme.color,
                     borderRadius: BorderRadius.circular(20), 
-                    border: Border.all(color: _proofImage != null ? theme.colorScheme.secondary : Colors.grey.withOpacity(0.3), width: 2)
+                    border: Border.all(color: _proofImage != null ? theme.colorScheme.secondary : Colors.grey.withValues(alpha: 0.3), width: 2)
                   ),
                   child: _proofImage != null 
                     ? ClipRRect(borderRadius: BorderRadius.circular(18), child: Image.file(_proofImage!, fit: BoxFit.cover))
@@ -168,24 +169,30 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
         decoration: BoxDecoration(
-          color: Colors.green.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.green.withOpacity(0.3)),
-        ),
-        child: Row(
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0D000000),
+            blurRadius: 20,
+            offset: Offset(0, 10),
+          ),
+        ],
+      ),
+        child: const Row(
           children: [
-            const Icon(Icons.support_agent_rounded, color: Colors.green),
-            const SizedBox(width: 16),
-            const Expanded(
+            Icon(Icons.support_agent_rounded, color: Colors.green),
+            SizedBox(width: 16),
+            Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Need help or custom plan?', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                  Text('Contact admin on WhatsApp', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                   Text('Need help or custom plan?', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                   Text('Contact admin on WhatsApp', style: TextStyle(fontSize: 12, color: Colors.grey)),
                 ],
               ),
             ),
-            const Icon(Icons.chat_rounded, color: Colors.green, size: 20),
+            Icon(Icons.chat_rounded, color: Colors.green, size: 20),
           ],
         ),
       ),
@@ -193,23 +200,23 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   }
 
   Widget _buildStatusCard(UserModel? user, bool isActive, bool isPending, bool isRejected) {
-    Color cardColor = Colors.red.withOpacity(0.1);
+    Color cardColor = Colors.red.withValues(alpha: 0.1);
     Color borderColor = Colors.redAccent;
     IconData icon = Icons.error_outline;
     String statusText = 'Inactive / غير نشط';
 
     if (isActive) {
-      cardColor = Colors.green.withOpacity(0.1);
+      cardColor = Colors.green.withValues(alpha: 0.1);
       borderColor = Colors.green;
       icon = Icons.verified;
       statusText = 'Account Active / الحساب نشط';
     } else if (isPending) {
-      cardColor = Colors.amber.withOpacity(0.1);
+      cardColor = Colors.amber.withValues(alpha: 0.1);
       borderColor = Colors.amber;
       icon = Icons.timer;
       statusText = 'Pending Review / قيد المراجعة';
     } else if (isRejected) {
-      cardColor = Colors.red.withOpacity(0.1);
+      cardColor = Colors.red.withValues(alpha: 0.1);
       borderColor = Colors.red;
       icon = Icons.cancel;
       statusText = 'Request Rejected / تم رفض الطلب';
@@ -241,7 +248,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
             const SizedBox(height: 12),
             Container(
               padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(color: Colors.white.withOpacity(0.5), borderRadius: BorderRadius.circular(10)),
+              decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.5), borderRadius: BorderRadius.circular(10)),
               child: Text('Reason / السبب: ${user!.subscriptionRejectReason}', style: const TextStyle(fontSize: 13, color: Colors.red, fontWeight: FontWeight.bold)),
             ),
           ],
@@ -258,7 +265,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     final theme = Theme.of(context);
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: theme.cardTheme.color, borderRadius: BorderRadius.circular(20), border: Border.all(color: Colors.grey.withOpacity(0.1))),
+      decoration: BoxDecoration(color: theme.cardTheme.color, borderRadius: BorderRadius.circular(20), border: Border.all(color: Colors.grey.withValues(alpha: 0.1))),
       child: Column(
         children: [
           _buildPaymentRow('Vodafone Cash', vodafoneCash, Colors.red),
@@ -280,7 +287,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   Widget _buildPlanTile(String title, String price, String value, {Color? color}) {
     final isSelected = _selectedPlan == value;
     final theme = Theme.of(context);
-    final borderColor = isSelected ? (color ?? theme.colorScheme.secondary) : Colors.grey.withOpacity(0.1);
+    final borderColor = isSelected ? (color ?? theme.colorScheme.secondary) : Colors.grey.withValues(alpha: 0.1);
 
     return InkWell(
       onTap: () => setState(() => _selectedPlan = value),

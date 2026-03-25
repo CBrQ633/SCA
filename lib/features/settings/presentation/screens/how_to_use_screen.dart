@@ -42,7 +42,7 @@ class HowToUseScreen extends StatelessWidget {
                   const SizedBox(height: 8),
                   Text(
                     isArabic ? 'تعرف على كافة ميزات التطبيق الاحترافية' : 'Learn all the professional features of SCA',
-                    style: TextStyle(color: theme.colorScheme.onPrimary.withOpacity(0.7), fontSize: 12),
+                    style: TextStyle(color: theme.colorScheme.onPrimary.withValues(alpha: 0.7), fontSize: 12),
                   ),
                 ],
               ),
@@ -143,14 +143,14 @@ class HowToUseScreen extends StatelessWidget {
       decoration: BoxDecoration(
         color: theme.cardTheme.color,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4))],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10, offset: const Offset(0, 4))],
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
             padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(color: theme.colorScheme.secondary.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+            decoration: BoxDecoration(color: theme.colorScheme.secondary.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
             child: Icon(icon, color: theme.colorScheme.secondary, size: 24),
           ),
           const SizedBox(width: 16),

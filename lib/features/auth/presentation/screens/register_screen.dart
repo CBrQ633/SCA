@@ -179,7 +179,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text('Already have an account? ', style: TextStyle(color: theme.textTheme.bodySmall?.color?.withOpacity(0.7))),
+                      Text('Already have an account? ', style: TextStyle(color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.7))),
                       TextButton(
                         onPressed: () => context.go(AppConstants.routeLogin),
                         child: Text(

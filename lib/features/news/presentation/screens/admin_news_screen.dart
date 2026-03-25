@@ -160,9 +160,13 @@ class _AdminNewsScreenState extends State<AdminNewsScreen> {
                   } else {
                     await _repository.updateAnnouncement(id: item.id, title: titleCtrl.text, content: contentCtrl.text, expiryDate: selectedExpiryDate, imageFiles: pickedImages, existingImageUrls: currentImageUrls);
                   }
-                  _loadNews();
+                  if (mounted && context.mounted) {
+                    _loadNews();
+                  }
                 } catch (e) {
-                  if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+                  if (mounted && context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+                  }
                 }
               },
               child: const Text('Publish / نشر'),

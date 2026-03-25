@@ -56,7 +56,7 @@ class SyncService {
 
     if (syncedCount > 0) {
       // Notify the user that background tasks are synced
-      NotificationService().showNotification(
+      NotificationService().showLocalNotification(
         id: 999,
         title: 'Sync Complete / تم التحديث',
         body: 'Successfully synced $syncedCount offline updates.',

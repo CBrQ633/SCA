@@ -19,7 +19,7 @@ import 'core/services/sync_service.dart';
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();
   if (message.notification != null) {
-    await NotificationService().showNotification(
+    await NotificationService().showLocalNotification(
       id: message.hashCode,
       title: message.notification?.title ?? 'New Message',
       body: message.notification?.body ?? '',

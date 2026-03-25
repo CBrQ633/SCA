@@ -148,7 +148,9 @@ class CallsRepository {
           totalItems: list.totalItems,
         ));
       }
-    } catch (e) {}
+    } catch (e) {
+      // Offline or error, state handled by SyncService
+    }
   }
 
   String _normalizePhoneNumber(String raw) {
@@ -262,7 +264,7 @@ class CallsRepository {
       final itemsResponse = await _supabase
           .from('call_list_items')
           .select('status')
-          .in_('list_id', listIds);
+          .filter('list_id', 'in', listIds);
       
       final items = itemsResponse as List;
       int total = items.length;
@@ -288,7 +290,7 @@ class CallsRepository {
       final itemsResponse = await _supabase
           .from('call_list_items')
           .select('*, call_lists(name)')
-          .in_('list_id', listIds);
+          .filter('list_id', 'in', listIds);
       
       return (itemsResponse as List).map((e) => {
         'name': e['name'],

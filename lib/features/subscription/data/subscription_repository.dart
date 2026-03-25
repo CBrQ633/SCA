@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class SubscriptionRepository {
@@ -13,13 +12,17 @@ class SubscriptionRepository {
   }) async {
     try {
       final fileExt = proofImage.path.split('.').last;
-      final fileName = '${DateTime.now().millisecondsSinceEpoch}_$userId.$fileExt';
+      final fileName =
+          '${DateTime.now().millisecondsSinceEpoch}_$userId.$fileExt';
 
       String publicUrl;
       try {
         final storagePath = 'proofs/$fileName';
-        await _supabase.storage.from('payment_proofs').upload(storagePath, proofImage);
-        publicUrl = _supabase.storage.from('payment_proofs').getPublicUrl(storagePath);
+        await _supabase.storage
+            .from('payment_proofs')
+            .upload(storagePath, proofImage);
+        publicUrl =
+            _supabase.storage.from('payment_proofs').getPublicUrl(storagePath);
       } catch (e) {
         throw Exception('فشل في رفع صورة الإيصال، تأكد من اتصال الإنترنت');
       }
@@ -31,12 +34,11 @@ class SubscriptionRepository {
         'payment_screenshot_url': publicUrl,
         'status': 'pending',
       });
-      
+
       await _supabase.from('profiles').update({
         'subscription_status': 'pending',
         'subscription_reject_reason': null
       }).eq('id', userId);
-      
     } catch (e) {
       throw Exception('حدث خطأ أثناء إرسال الطلب: $e');
     }
@@ -46,7 +48,7 @@ class SubscriptionRepository {
     try {
       final response = await _supabase
           .from('subscription_requests')
-          .select('*, profiles!user_id(email, full_name, fcm_token)') 
+          .select('*, profiles!user_id(email, full_name, fcm_token)')
           .eq('status', 'pending')
           .order('created_at', ascending: false);
       return List<Map<String, dynamic>>.from(response);
@@ -67,14 +69,17 @@ class SubscriptionRepository {
     }
   }
 
-  Future<void> approveRequest(String requestId, String userId, String planType) async {
+  Future<void> approveRequest(
+      String requestId, String userId, String planType) async {
     try {
       final now = DateTime.now();
-      DateTime endDate = planType == 'quarterly' 
-          ? now.add(const Duration(days: 90)) 
+      DateTime endDate = planType == 'quarterly'
+          ? now.add(const Duration(days: 90))
           : now.add(const Duration(days: 30));
 
-      await _supabase.from('subscription_requests').update({'status': 'approved'}).eq('id', requestId);
+      await _supabase
+          .from('subscription_requests')
+          .update({'status': 'approved'}).eq('id', requestId);
 
       await _supabase.from('profiles').update({
         'subscription_status': 'active',
@@ -87,14 +92,15 @@ class SubscriptionRepository {
     }
   }
 
-  Future<void> rejectRequest(String requestId, String userId, {String? reason}) async {
+  Future<void> rejectRequest(String requestId, String userId,
+      {String? reason}) async {
     try {
       // 1. Update request status
       await _supabase.from('subscription_requests').update({
         'status': 'rejected',
         'reject_reason': reason,
       }).eq('id', requestId);
-      
+
       // 2. Update user profile status
       await _supabase.from('profiles').update({
         'subscription_status': 'rejected',
