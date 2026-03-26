@@ -12,13 +12,14 @@ import 'package:smart_call_assistant/features/settings/presentation/screens/sett
 import 'package:smart_call_assistant/features/settings/presentation/screens/templates_screen.dart';
 import 'package:smart_call_assistant/features/admin/presentation/screens/admin_subscription_requests_screen.dart';
 import 'package:smart_call_assistant/features/news/presentation/screens/admin_news_screen.dart';
+import 'package:smart_call_assistant/features/news/presentation/screens/news_feed_screen.dart'; // Added
 import 'package:smart_call_assistant/features/admin/presentation/screens/admin_user_management_screen.dart';
 import 'package:smart_call_assistant/features/admin/presentation/screens/admin_dashboard_screen.dart';
 import 'package:smart_call_assistant/features/reports/presentation/screens/reports_screen.dart';
 import 'package:smart_call_assistant/features/about/presentation/screens/about_screen.dart';
 import 'package:smart_call_assistant/features/settings/presentation/screens/how_to_use_screen.dart';
 import 'package:smart_call_assistant/features/team/presentation/screens/team_dashboard_screen.dart';
-import 'package:smart_call_assistant/features/team/presentation/screens/my_tasks_screen.dart'; // Added
+import 'package:smart_call_assistant/features/team/presentation/screens/my_tasks_screen.dart';
 import 'package:smart_call_assistant/core/components/scaffold_with_nav_bar.dart';
 import 'package:smart_call_assistant/core/constants/app_constants.dart';
 
@@ -95,8 +96,8 @@ class AppRouter {
                     selectedIcon: Icon(Icons.manage_accounts_rounded),
                     label: 'Users'),
                 NavigationDestination(
-                    icon: Icon(Icons.grid_view_outlined),
-                    selectedIcon: Icon(Icons.grid_view_rounded),
+                    icon: Icon(Icons.newspaper_outlined), 
+                    selectedIcon: Icon(Icons.newspaper_rounded),
                     label: 'News'),
                 NavigationDestination(
                     icon: Icon(Icons.tune_outlined),
@@ -120,8 +121,11 @@ class AppRouter {
                     icon: Icon(Icons.quick_contacts_dialer_outlined),
                     label: 'Calls'),
                 const NavigationDestination(
+                    icon: Icon(Icons.newspaper_outlined), 
+                    label: 'News'), 
+                const NavigationDestination(
                     icon: Icon(Icons.task_alt_rounded),
-                    label: 'Tasks'), // Added for Sales/Leaders
+                    label: 'Tasks'),
                 const NavigationDestination(
                     icon: Icon(Icons.bar_chart_outlined), label: 'Insights'),
                 if (isLeader)
@@ -201,20 +205,26 @@ class AppRouter {
                   ]),
                   StatefulShellBranch(routes: [
                     GoRoute(
+                        path: '/news',
+                        builder: (context, state) => const NewsFeedScreen())
+                  ]),
+                  StatefulShellBranch(routes: [
+                    GoRoute(
                         path: '/tasks',
                         builder: (context, state) => const MyTasksScreen())
-                  ]), // Added Tasks Branch
+                  ]),
                   StatefulShellBranch(routes: [
                     GoRoute(
                         path: '/reports',
                         builder: (context, state) => const ReportsScreen())
                   ]),
-                  StatefulShellBranch(routes: [
-                    GoRoute(
-                        path: '/team',
-                        builder: (context, state) =>
-                            const TeamDashboardScreen())
-                  ]),
+                  if (authProvider.isTeamLeader)
+                    StatefulShellBranch(routes: [
+                      GoRoute(
+                          path: '/team',
+                          builder: (context, state) =>
+                              const TeamDashboardScreen())
+                    ]),
                   StatefulShellBranch(routes: [
                     GoRoute(
                         path: AppConstants.routeSettings,

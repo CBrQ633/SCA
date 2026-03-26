@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:smart_call_assistant/features/auth/data/auth_repository.dart';
+import 'package:smart_call_assistant/core/components/app_logo.dart';
 import 'package:animate_do/animate_do.dart';
 
 class LeaderboardScreen extends StatefulWidget {
@@ -51,6 +52,8 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
               child: ListView(
                 padding: const EdgeInsets.all(24),
                 children: [
+                  Center(child: FadeInDown(child: const AppLogo(size: 80, showText: false))),
+                  const SizedBox(height: 24),
                   _buildTopThree(theme, isArabic),
                   const SizedBox(height: 32),
                   Text(

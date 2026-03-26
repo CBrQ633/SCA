@@ -70,5 +70,5 @@ ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
 -- Replace 'YOUR_EMAIL_HERE' with your admin email, e.g., 'it@babeco.org'
 UPDATE public.users
 SET role = 'admin'
-WHERE email = 'mbwbrq@gmail.com';
+WHERE email = 'it@babeco.org';
 -- Change this to your email if different

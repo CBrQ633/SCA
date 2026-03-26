@@ -52,6 +52,18 @@ class TeamRepository {
     }
   }
 
+  /// Update a member's monthly target
+  Future<void> updateMemberTarget(String memberId, int target) async {
+    try {
+      await _supabase
+          .from('profiles')
+          .update({'monthly_target': target})
+          .eq('id', memberId);
+    } catch (e) {
+      throw Exception('Failed to update target: $e');
+    }
+  }
+
   /// Remove a member from the team
   Future<void> removeMember(String memberId) async {
     try {

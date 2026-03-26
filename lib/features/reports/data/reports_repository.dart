@@ -6,20 +6,31 @@ import 'models/report_stats.dart';
 class ReportsRepository {
   final SupabaseClient _supabase = SupabaseConfig.client;
 
-  Future<CallStats> getCallStats() async {
+  Future<CallStats> getCallStats(String userId) async {
     try {
-      final totalResponse = await _supabase.from('call_list_items').count();
+      // Fetch only lists belonging to or assigned to this user
+      final listsResponse = await _supabase.from('call_lists')
+          .select('id')
+          .or('user_id.eq.$userId,assigned_to.eq.$userId');
+      final listIds = (listsResponse as List).map((l) => l['id']).toList();
+
+      if (listIds.isEmpty) return CallStats(totalCalls: 0, answered: 0, noAnswer: 0, pending: 0);
+
+      final totalResponse = await _supabase.from('call_list_items').count().filter('list_id', 'in', listIds);
       final answeredResponse = await _supabase
           .from('call_list_items')
           .count()
+          .filter('list_id', 'in', listIds)
           .eq('status', 'called');
       final noAnswerResponse = await _supabase
           .from('call_list_items')
           .count()
+          .filter('list_id', 'in', listIds)
           .eq('status', 'no_answer');
       final pendingResponse = await _supabase
           .from('call_list_items')
           .count()
+          .filter('list_id', 'in', listIds)
           .eq('status', 'pending');
 
       return CallStats(
@@ -46,16 +57,23 @@ class ReportsRepository {
     }
   }
 
-  // ✅ Enhanced: Fetch call details with List Name
-  Future<List<CallEntry>> getCallDetails() async {
+  // ✅ Enhanced: Fetch call details with List Name (Filtered for user)
+  Future<List<CallEntry>> getCallDetails(String userId) async {
     try {
+      final listsResponse = await _supabase.from('call_lists')
+          .select('id')
+          .or('user_id.eq.$userId,assigned_to.eq.$userId');
+      final listIds = (listsResponse as List).map((l) => l['id']).toList();
+
+      if (listIds.isEmpty) return [];
+
       final response = await _supabase
           .from('call_list_items')
-          .select('*, call_lists(name)') // Join with call_lists to get the name
+          .select('*, call_lists(name)')
+          .filter('list_id', 'in', listIds)
           .order('created_at', ascending: false);
 
       return (response as List).map((json) {
-        // Flatten the joined data for the CallEntry model
         final listData = json['call_lists'] as Map<String, dynamic>?;
         json['list_name'] = listData?['name'] ?? 'Unknown List';
         return CallEntry.fromJson(json);

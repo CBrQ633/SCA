@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../data/reports_repository.dart';
-import '../../data/models/report_stats.dart';
-import '../../../../core/services/excel_service.dart';
-// import '../../../../core/components/app_logo.dart';
-import '../../../../shared/services/models.dart';
-import '../../../auth/presentation/auth_provider.dart';
-import '../../../auth/data/auth_repository.dart';
+import 'package:smart_call_assistant/features/reports/data/reports_repository.dart';
+import 'package:smart_call_assistant/features/reports/data/models/report_stats.dart';
+import 'package:smart_call_assistant/core/services/excel_service.dart';
+import 'package:smart_call_assistant/core/components/app_logo.dart';
+import 'package:smart_call_assistant/shared/services/models.dart';
+import 'package:smart_call_assistant/features/auth/presentation/auth_provider.dart';
+import 'package:smart_call_assistant/features/auth/data/auth_repository.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:intl/intl.dart';
 
@@ -35,25 +35,24 @@ class _ReportsScreenState extends State<ReportsScreen> {
     setState(() => _isLoading = true);
     final authProvider = context.read<AuthProvider>();
     final user = authProvider.currentUser;
+    if (user == null) return;
 
     try {
-      final callStats = await _repository.getCallStats();
-      final allCalls = await _repository.getCallDetails();
+      final callStats = await _repository.getCallStats(user.id);
+      final allCalls = await _repository.getCallDetails(user.id);
       
       // Load team messages if user has a leader
-      if (user?.leaderId != null) {
-        _teamMessages = await _authRepo.getTeamMessages(user!.leaderId!);
+      if (user.leaderId != null) {
+        _teamMessages = await _authRepo.getTeamMessages(user.leaderId!);
       }
 
       if (!mounted) return;
 
-      if (mounted) {
-        setState(() {
-          _callStats = callStats;
-          _allCalls = allCalls;
-          _isLoading = false;
-        });
-      }
+      setState(() {
+        _callStats = callStats;
+        _allCalls = allCalls;
+        _isLoading = false;
+      });
     } catch (e) {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -87,6 +86,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
               child: ListView(
                 padding: const EdgeInsets.all(24),
                 children: [
+                  Center(child: FadeInDown(child: const AppLogo(size: 80, showText: false))),
+                  const SizedBox(height: 24),
                   // 1. Target Progress Card
                   FadeInDown(child: _buildTargetCard(user, theme, isArabic)),
                   const SizedBox(height: 32),
@@ -109,7 +110,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                   _buildStatCard(
                     theme,
                     isArabic ? 'إجمالي المحاولات' : 'Total Attempted', 
-                    (_callStats!.answered + _callStats!.noAnswer).toString(), 
+                    ((_callStats?.answered ?? 0) + (_callStats?.noAnswer ?? 0)).toString(), 
                     Icons.insights_rounded, 
                     theme.colorScheme.primary
                   ),
@@ -119,14 +120,14 @@ class _ReportsScreenState extends State<ReportsScreen> {
                     children: [
                       Expanded(
                         child: InkWell(
-                          onTap: () => _showDetailsDialog('Answered Calls', _allCalls.where((c) => c.isAnswered).toList()),
+                          onTap: () => _showDetailsDialog(isArabic ? 'مكالمات تم الرد عليها' : 'Answered Calls', _allCalls.where((c) => c.isAnswered).toList()),
                           child: _buildStatCard(theme, isArabic ? 'تم الرد' : 'Answered', _callStats?.answered.toString() ?? '0', Icons.phone_callback_rounded, Colors.green, compact: true),
                         ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: InkWell(
-                          onTap: () => _showDetailsDialog('Missed Calls', _allCalls.where((c) => c.isNotAnswered).toList()),
+                          onTap: () => _showDetailsDialog(isArabic ? 'مكالمات لم يتم الرد عليها' : 'Missed Calls', _allCalls.where((c) => c.isNotAnswered).toList()),
                           child: _buildStatCard(theme, isArabic ? 'لم يرد' : 'Missed', _callStats?.noAnswer.toString() ?? '0', Icons.phone_missed_rounded, Colors.redAccent, compact: true),
                         ),
                       ),

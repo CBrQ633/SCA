@@ -4,10 +4,11 @@ import 'package:file_picker/file_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:smart_call_assistant/features/auth/data/user_model.dart';
 import 'package:smart_call_assistant/features/auth/presentation/auth_provider.dart';
-import 'package:smart_call_assistant/features/auth/data/auth_repository.dart';
+import 'package:smart_call_assistant/features/team/data/team_repository.dart';
 import 'package:smart_call_assistant/features/calls/data/calls_repository.dart';
-// import 'package:smart_call_assistant/core/services/excel_service.dart';
+import 'package:smart_call_assistant/core/services/excel_service.dart';
 import 'package:smart_call_assistant/core/services/notification_service.dart';
+import 'package:smart_call_assistant/shared/services/models.dart';
 import 'package:animate_do/animate_do.dart';
 
 class MemberDetailScreen extends StatefulWidget {
@@ -20,24 +21,33 @@ class MemberDetailScreen extends StatefulWidget {
 
 class _MemberDetailScreenState extends State<MemberDetailScreen> {
   final CallsRepository _callsRepo = CallsRepository();
-  final AuthRepository _authRepo = AuthRepository();
+  final TeamRepository _teamRepo = TeamRepository();
+  final ExcelService _excelService = ExcelService();
+  
   bool _isLoading = true;
+  bool _isDownloading = false;
   Map<String, dynamic> _stats = {};
+  int _currentMonthlyTarget = 0;
 
   @override
   void initState() {
     super.initState();
+    _currentMonthlyTarget = widget.member.monthlyTarget;
     _loadStats();
   }
 
   Future<void> _loadStats() async {
     setState(() => _isLoading = true);
-    final stats = await _callsRepo.getMemberStats(widget.member.id);
-    if (mounted) {
-      setState(() {
-        _stats = stats;
-        _isLoading = false;
-      });
+    try {
+      final stats = await _callsRepo.getMemberStats(widget.member.id);
+      if (mounted) {
+        setState(() {
+          _stats = stats;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -70,49 +80,62 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
     }
   }
 
-  void _showAddTaskDialog(bool isArabic) {
-    final titleController = TextEditingController();
-    final descController = TextEditingController();
-    
+  Future<void> _downloadReport(bool isArabic) async {
+    setState(() => _isDownloading = true);
+    try {
+      final rawDetails = await _callsRepo.getMemberCallDetails(widget.member.id);
+      final calls = rawDetails.map((e) => CallEntry.fromJson(e)).toList();
+      
+      if (calls.isEmpty) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(isArabic ? 'لا توجد مكالمات مسجلة لهذا المندوب' : 'No calls recorded for this member')));
+      } else {
+        await _excelService.generateAndShareCallReport(calls, 'Report_${widget.member.fullName}');
+      }
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+    } finally {
+      if (mounted) setState(() => _isDownloading = false);
+    }
+  }
+
+  void _showEditTargetDialog(bool isArabic) {
+    final controller = TextEditingController(text: _currentMonthlyTarget.toString());
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text(isArabic ? 'إرسال مهمة خاصة' : 'Send Private Task'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(controller: titleController, decoration: InputDecoration(labelText: isArabic ? 'عنوان المهمة' : 'Task Title')),
-            const SizedBox(height: 12),
-            TextField(controller: descController, decoration: InputDecoration(labelText: isArabic ? 'الوصف (اختياري)' : 'Description (Optional)'), maxLines: 2),
-          ],
+        title: Text(isArabic ? 'تعديل المستهدف الشهري' : 'Edit Monthly Target'),
+        content: TextField(
+          controller: controller,
+          keyboardType: TextInputType.number,
+          decoration: InputDecoration(
+            labelText: isArabic ? 'عدد المكالمات المستهدف' : 'Target Call Count',
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+          ),
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: Text(isArabic ? 'إلغاء' : 'Cancel')),
           ElevatedButton(
             onPressed: () async {
-              if (titleController.text.isEmpty) return;
-              final leaderId = context.read<AuthProvider>().currentUser!.id;
+              final newTarget = int.tryParse(controller.text) ?? _currentMonthlyTarget;
               
-              await _authRepo.createPrivateTask(
-                leaderId: leaderId,
-                memberId: widget.member.id,
-                title: titleController.text.trim(),
-                description: descController.text.trim(),
-              );
+              // Capture navigator and messenger before async gap
+              final messenger = ScaffoldMessenger.of(context);
+              final navigator = Navigator.of(context);
 
-              await NotificationService().sendNotificationToTeam(
-                leaderId: leaderId,
-                title: 'New Private Task 📝',
-                body: titleController.text.trim(),
-              );
-
-              if (mounted && context.mounted) {
-                Navigator.pop(ctx);
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Task sent successfully!')));
+              try {
+                await _teamRepo.updateMemberTarget(widget.member.id, newTarget);
+                
+                if (!mounted) return;
+                setState(() => _currentMonthlyTarget = newTarget);
+                navigator.pop(); // Close dialog safely
+                messenger.showSnackBar(const SnackBar(content: Text('Target updated successfully!')));
+              } catch (e) {
+                if (!mounted) return;
+                messenger.showSnackBar(SnackBar(content: Text('Error: $e')));
               }
             },
-            child: Text(isArabic ? 'إرسال' : 'Send'),
+            child: Text(isArabic ? 'حفظ' : 'Save'),
           ),
         ],
       ),
@@ -157,7 +180,10 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
   }
 
   Widget _buildTargetProgress(ThemeData theme, bool isArabic) {
-    double progress = _stats['progress'] ?? 0.0;
+    int totalCalls = (_stats['answered'] ?? 0) + (_stats['missed'] ?? 0);
+    double progress = _currentMonthlyTarget == 0 ? 0.0 : totalCalls / _currentMonthlyTarget;
+    if (progress > 1.0) progress = 1.0;
+
     return Column(children: [
       Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
         Text(isArabic ? 'التقدم نحو الهدف' : 'Target Progress', style: const TextStyle(fontSize: 12)),
@@ -175,17 +201,29 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
         _buildStatCard(isArabic ? 'إجمالي المكالمات' : 'Total Calls', '${_stats['total']}', Colors.blue),
         _buildStatCard(isArabic ? 'تم الرد' : 'Answered', '${_stats['answered']}', Colors.green),
         _buildStatCard(isArabic ? 'لم يتم الرد' : 'Missed', '${_stats['missed']}', Colors.red),
-        _buildStatCard(isArabic ? 'التارجت' : 'Monthly Target', '${widget.member.monthlyTarget}', Colors.orange),
+        GestureDetector(
+          onTap: () => _showEditTargetDialog(isArabic),
+          child: _buildStatCard(isArabic ? 'المستهدف' : 'Monthly Target', '$_currentMonthlyTarget', Colors.orange, isEditable: true),
+        ),
       ],
     );
   }
 
-  Widget _buildStatCard(String label, String value, Color color) {
+  Widget _buildStatCard(String label, String value, Color color, {bool isEditable = false}) {
     return Container(
       padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10)]),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: isEditable ? Border.all(color: color.withValues(alpha: 0.3), width: 1) : null, boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10)]),
       child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-        Text(value, style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: color)),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(value, style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: color)),
+            if (isEditable) ...[
+              const SizedBox(width: 4),
+              Icon(Icons.edit_note_rounded, size: 16, color: color),
+            ]
+          ],
+        ),
         Text(label, textAlign: TextAlign.center, style: const TextStyle(fontSize: 10, color: Colors.grey)),
       ]),
     );
@@ -205,21 +243,9 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
       const SizedBox(height: 16),
       SizedBox(
         width: double.infinity, height: 56,
-        child: OutlinedButton.icon(
-          onPressed: () => _showAddTaskDialog(isArabic),
-          icon: const Icon(Icons.add_task_rounded),
-          label: Text(isArabic ? 'إرسال مهمة خاصة (Task)' : 'Send Private Task'),
-          style: OutlinedButton.styleFrom(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
-        ),
-      ),
-      const SizedBox(height: 16),
-      SizedBox(
-        width: double.infinity, height: 56,
         child: TextButton.icon(
-          onPressed: () async {
-             // Future Excel report logic
-          },
-          icon: const Icon(Icons.file_download_outlined),
+          onPressed: _isDownloading ? null : () => _downloadReport(isArabic),
+          icon: _isDownloading ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.file_download_outlined),
           label: Text(isArabic ? 'سحب تقرير المندوب (Excel)' : 'Download Member Report'),
           style: TextButton.styleFrom(foregroundColor: Colors.grey),
         ),

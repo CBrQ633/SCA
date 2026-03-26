@@ -23,6 +23,17 @@ class SettingsScreen extends StatelessWidget {
             style: TextStyle(
                 color: colorScheme.onSurface, fontWeight: FontWeight.bold)),
         centerTitle: true,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh_rounded),
+            onPressed: () {
+              authProvider.refreshUser();
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text(isArabic ? 'تم تحديث البيانات' : 'Profile Refreshed'))
+              );
+            },
+          )
+        ],
       ),
       body: ListView(
         padding: const EdgeInsets.all(20),
@@ -31,8 +42,22 @@ class SettingsScreen extends StatelessWidget {
 
           const SizedBox(height: 24),
 
-          // ✅ Team Section
-          if (user != null && !user.isAdmin) ...[
+          // ✅ Account Management Section
+          _buildSectionLabel(isArabic ? 'إدارة الحساب' : 'Account Management', theme),
+          _buildMenuCard(theme, [
+            _buildNavRow(
+              theme: theme,
+              icon: Icons.logout_rounded,
+              title: isArabic ? 'تسجيل الخروج' : 'Logout',
+              color: Colors.red,
+              onTap: () => authProvider.logout(),
+            ),
+          ]),
+
+          const SizedBox(height: 24),
+
+          // ✅ Team Section (Only for Sales Users)
+          if (user != null && user.role == 'sales_user') ...[
             _buildSectionLabel(isArabic ? 'الفريق' : 'My Team', theme),
             _buildMenuCard(theme, [
               if (user.leaderId == null)
@@ -108,27 +133,11 @@ class SettingsScreen extends StatelessWidget {
           ]),
 
           const SizedBox(height: 48),
-
-          ElevatedButton(
-            onPressed: () => context.read<AuthProvider>().logout(),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red.withValues(alpha: 0.1),
-              foregroundColor: Colors.red,
-              elevation: 0,
-              minimumSize: const Size(double.infinity, 56),
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16)),
-            ),
-            child: Text(isArabic ? 'تسجيل الخروج' : 'Logout',
-                style:
-                    const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-          ),
-
-          const SizedBox(height: 20),
           Center(
               child: Text('App Version 1.1.0',
                   style: TextStyle(
                       color: theme.textTheme.bodySmall?.color, fontSize: 12))),
+          const SizedBox(height: 20),
         ],
       ),
     );
@@ -331,15 +340,16 @@ class SettingsScreen extends StatelessWidget {
       {required ThemeData theme,
       required IconData icon,
       required String title,
-      required VoidCallback onTap}) {
+      required VoidCallback onTap,
+      Color? color}) {
     return ListTile(
       onTap: onTap,
-      leading: Icon(icon, color: theme.colorScheme.primary, size: 22),
+      leading: Icon(icon, color: color ?? theme.colorScheme.primary, size: 22),
       title: Text(title,
           style: TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w600,
-              color: theme.colorScheme.onSurface)),
+              color: color ?? theme.colorScheme.onSurface)),
       trailing: Icon(Icons.chevron_right_rounded,
           color: theme.textTheme.bodySmall?.color, size: 20),
     );
